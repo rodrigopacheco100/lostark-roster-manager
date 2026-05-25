@@ -15,12 +15,13 @@ function formatRosters(rosters: Awaited<ReturnType<typeof getRosters>>) {
         .map((cr) => ({
           characterRaidId: cr.id,
           raidDifficultyId: cr.raidDifficultyId,
+          raidDifficultyCreatedAt: cr.raidDifficulty.raid.createdAt.getTime(),
           raidName: cr.raidDifficulty.raid.name,
           difficulty: cr.raidDifficulty.difficulty,
           minIlvl: cr.raidDifficulty.minIlvl,
           completed: cr.completed,
         }))
-        .sort((a, b) => a.minIlvl - b.minIlvl),
+        .sort((a, b) => a.minIlvl - b.minIlvl || a.raidDifficultyCreatedAt - b.raidDifficultyCreatedAt),
     })),
     totalRaidsAssigned: roster.characters.reduce((s, c) => s + c.characterRaids.length, 0),
     totalCharacters: roster.characters.length,

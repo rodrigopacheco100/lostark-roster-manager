@@ -4,7 +4,7 @@ import {
   raids, raidDifficulties, characterRaids, FriendRequestStatus, LostArkClass,
   groups, groupMembers, groupBans, GroupRole,
 } from "@/db/schema"
-import { eq, and, or, like, not, inArray, sql } from "drizzle-orm"
+import { eq, and, or, like, not, inArray, sql, desc } from "drizzle-orm"
 
 /* ───────── ROSTERS ───────── */
 export function getRosters(userId: string) {
@@ -192,6 +192,7 @@ export function removeFriendship(userId: string, friendId: string) {
 export function getAllRaids() {
   return db.query.raids.findMany({
     with: { difficulties: true },
+    orderBy: desc(raids.createdAt),
   })
 }
 

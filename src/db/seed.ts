@@ -4,7 +4,6 @@ import { raids, raidDifficulties } from "./schema"
 import { eq } from "drizzle-orm"
 
 type RaidDataItem = {
-
   name: string
   difficulties: {
     difficulty: string
@@ -14,30 +13,48 @@ type RaidDataItem = {
 
 const raidData: RaidDataItem[] = [
   {
-    name: "Echidna",
-    difficulties: [
-      { difficulty: "Normal", minIlvl: 1620 },
-      { difficulty: "Hard", minIlvl: 1630 },
-    ],
-  },
-  {
-    name: "Behemoth",
-    difficulties: [{ difficulty: "Normal", minIlvl: 1640 }],
-  },
-  {
-    name: "Aegir",
+    name: "Act 1 - Aegir",
     difficulties: [
       { difficulty: "Normal", minIlvl: 1660 },
       { difficulty: "Hard", minIlvl: 1680 },
     ],
   },
   {
-    name: "Brelshaza 2.0",
+    name: "Act 2 - Brelshaza",
     difficulties: [
       { difficulty: "Normal", minIlvl: 1670 },
       { difficulty: "Hard", minIlvl: 1690 },
     ],
   },
+  {
+    name: "Act 3 - Mordum",
+    difficulties: [
+      { difficulty: "Normal", minIlvl: 1680 },
+      { difficulty: "Hard", minIlvl: 1700 },
+    ],
+  },
+  {
+    name: "Act 4 - Armoche",
+    difficulties: [
+      { difficulty: "Normal", minIlvl: 1700 },
+      { difficulty: "Hard", minIlvl: 1720 },
+    ],
+  },
+  {
+    name: "Final Act - Kazeros",
+    difficulties: [
+      { difficulty: "Normal", minIlvl: 1710 },
+      { difficulty: "Hard", minIlvl: 1730 },
+    ],
+  },
+  {
+    name: "Shadow Raid - Serca",
+    difficulties: [
+      { difficulty: "Normal", minIlvl: 1710 },
+      { difficulty: "Hard", minIlvl: 1730 },
+      { difficulty: "Nightmare", minIlvl: 1740 },
+    ]
+  }
 ]
 
 async function main() {

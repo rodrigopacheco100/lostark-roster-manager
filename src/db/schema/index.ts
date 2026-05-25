@@ -1,0 +1,186 @@
+import { relations } from "drizzle-orm"
+import {
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  integer,
+  uniqueIndex,
+} from "drizzle-orm/pg-core"
+
+/* ───────── ENUMS ───────── */
+export enum FriendRequestStatus {
+  Pending = "pending",
+  Accepted = "accepted",
+  Declined = "declined",
+}
+
+export enum LostArkClass {
+  Artist = 'Artist',
+  Berserker = "Berserker",
+  Destroyer = "Destroyer",
+  Gunlancer = "Gunlancer",
+  Paladin = "Paladin",
+  Arcanist = "Arcanist",
+  Summoner = "Summoner",
+  Bard = "Bard",
+  Sorceress = "Sorceress",
+  Deathblade = "Deathblade",
+  Shadowhunter = "Shadowhunter",
+  Reaper = "Reaper",
+  Souleater = "Souleater",
+  Sharpshooter = "Sharpshooter",
+  Deadeye = "Deadeye",
+  Artillerist = "Artillerist",
+  Machinist = "Machinist",
+  Striker = "Striker",
+  Wardancer = "Wardancer",
+  Scrapper = "Scrapper",
+  Soulfist = "Soulfist",
+  Glaivier = "Glaivier",
+  Gunslinger = "Gunslinger",
+  Slayer = "Slayer",
+  Wildsoul = "Wildsoul",
+}
+
+/* ───────── USERS ───────── */
+export const users = pgTable("users", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  googleId: text("google_id").unique(),
+  discordId: text("discord_id").unique(),
+  friendCode: text("friend_code").notNull().unique(),
+  image: text("image"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
+
+/* ───────── ROSTERS ───────── */
+export const rosters = pgTable("rosters", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
+
+/* ───────── CHARACTERS ───────── */
+export const characters = pgTable("characters", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  class: text("class").$type<LostArkClass>().notNull(),
+  itemLevel: integer("item_level").notNull(),
+  rosterId: uuid("roster_id")
+    .notNull()
+    .references(() => rosters.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
+
+/* ───────── FRIEND REQUESTS ───────── */
+export const friendRequests = pgTable("friend_requests", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  senderId: uuid("sender_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  receiverId: uuid("receiver_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  status: text("status").$type<FriendRequestStatus>().notNull().default(FriendRequestStatus.Pending),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
+
+/* ───────── FRIENDSHIPS ───────── */
+export const friendships = pgTable("friendships", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  friendId: uuid("friend_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
+
+/* ───────── RAIDS (global) ───────── */
+export const raids = pgTable("raids", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
+
+/* ───────── RAID DIFFICULTIES ───────── */
+export const raidDifficulties = pgTable(
+  "raid_difficulties",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    raidId: uuid("raid_id")
+      .notNull()
+      .references(() => raids.id, { onDelete: "cascade" }),
+    difficulty: text("difficulty").notNull(),
+    minIlvl: integer("min_ilvl").notNull(),
+  },
+  (table) => ({
+    uniqueRaidDifficulty: uniqueIndex("raid_diff_idx").on(table.raidId, table.difficulty),
+  }),
+)
+
+/* ───────── CHARACTER RAIDS (junction) ───────── */
+export const characterRaids = pgTable(
+  "character_raids",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    raidDifficultyId: uuid("raid_difficulty_id")
+      .notNull()
+      .references(() => raidDifficulties.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    uniqueCharRaidDiff: uniqueIndex("char_raid_diff_idx").on(table.characterId, table.raidDifficultyId),
+  }),
+)
+
+/* ───────── RELATIONS ───────── */
+export const usersRelations = relations(users, ({ many }) => ({
+  rosters: many(rosters),
+  sentRequests: many(friendRequests, { relationName: "sender" }),
+  receivedRequests: many(friendRequests, { relationName: "receiver" }),
+  friendships: many(friendships, { relationName: "user" }),
+  friendOf: many(friendships, { relationName: "friend" }),
+}))
+
+export const rostersRelations = relations(rosters, ({ one, many }) => ({
+  user: one(users, { fields: [rosters.userId], references: [users.id] }),
+  characters: many(characters),
+}))
+
+export const charactersRelations = relations(characters, ({ one, many }) => ({
+  roster: one(rosters, { fields: [characters.rosterId], references: [rosters.id] }),
+  characterRaids: many(characterRaids),
+}))
+
+export const friendRequestsRelations = relations(friendRequests, ({ one }) => ({
+  sender: one(users, { fields: [friendRequests.senderId], references: [users.id], relationName: "sender" }),
+  receiver: one(users, { fields: [friendRequests.receiverId], references: [users.id], relationName: "receiver" }),
+}))
+
+export const friendshipsRelations = relations(friendships, ({ one }) => ({
+  user: one(users, { fields: [friendships.userId], references: [users.id], relationName: "user" }),
+  friend: one(users, { fields: [friendships.friendId], references: [users.id], relationName: "friend" }),
+}))
+
+export const raidsRelations = relations(raids, ({ many }) => ({
+  difficulties: many(raidDifficulties),
+}))
+
+export const raidDifficultiesRelations = relations(raidDifficulties, ({ one, many }) => ({
+  raid: one(raids, { fields: [raidDifficulties.raidId], references: [raids.id] }),
+  characterRaids: many(characterRaids),
+}))
+
+export const characterRaidsRelations = relations(characterRaids, ({ one }) => ({
+  character: one(characters, { fields: [characterRaids.characterId], references: [characters.id] }),
+  raidDifficulty: one(raidDifficulties, { fields: [characterRaids.raidDifficultyId], references: [raidDifficulties.id] }),
+}))

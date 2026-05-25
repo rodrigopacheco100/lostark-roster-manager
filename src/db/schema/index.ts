@@ -5,6 +5,7 @@ import {
   timestamp,
   uuid,
   integer,
+  boolean,
   uniqueIndex,
 } from "drizzle-orm/pg-core"
 
@@ -13,6 +14,12 @@ export enum FriendRequestStatus {
   Pending = "pending",
   Accepted = "accepted",
   Declined = "declined",
+}
+
+export enum GroupRole {
+  Owner = "owner",
+  Admin = "admin",
+  Member = "member",
 }
 
 export enum LostArkClass {
@@ -102,6 +109,51 @@ export const friendships = pgTable("friendships", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 })
 
+/* ───────── GROUPS ───────── */
+export const groups = pgTable("groups", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  inviteCode: text("invite_code").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
+
+/* ───────── GROUP MEMBERS ───────── */
+export const groupMembers = pgTable(
+  "group_members",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").$type<GroupRole>().notNull().default(GroupRole.Member),
+    joinedAt: timestamp("joined_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueGroupMember: uniqueIndex("group_member_idx").on(table.groupId, table.userId),
+  }),
+)
+
+/* ───────── GROUP BANS ───────── */
+export const groupBans = pgTable(
+  "group_bans",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueGroupBan: uniqueIndex("group_ban_idx").on(table.groupId, table.userId),
+  }),
+)
+
 /* ───────── RAIDS (global) ───────── */
 export const raids = pgTable("raids", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -136,6 +188,7 @@ export const characterRaids = pgTable(
     raidDifficultyId: uuid("raid_difficulty_id")
       .notNull()
       .references(() => raidDifficulties.id, { onDelete: "cascade" }),
+    completed: boolean("completed").notNull().default(false),
   },
   (table) => ({
     uniqueCharRaidDiff: uniqueIndex("char_raid_diff_idx").on(table.characterId, table.raidDifficultyId),
@@ -149,6 +202,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   receivedRequests: many(friendRequests, { relationName: "receiver" }),
   friendships: many(friendships, { relationName: "user" }),
   friendOf: many(friendships, { relationName: "friend" }),
+  groupMemberships: many(groupMembers),
+  groupBans: many(groupBans),
 }))
 
 export const rostersRelations = relations(rosters, ({ one, many }) => ({
@@ -169,6 +224,21 @@ export const friendRequestsRelations = relations(friendRequests, ({ one }) => ({
 export const friendshipsRelations = relations(friendships, ({ one }) => ({
   user: one(users, { fields: [friendships.userId], references: [users.id], relationName: "user" }),
   friend: one(users, { fields: [friendships.friendId], references: [users.id], relationName: "friend" }),
+}))
+
+export const groupsRelations = relations(groups, ({ many }) => ({
+  members: many(groupMembers),
+  bans: many(groupBans),
+}))
+
+export const groupMembersRelations = relations(groupMembers, ({ one }) => ({
+  group: one(groups, { fields: [groupMembers.groupId], references: [groups.id] }),
+  user: one(users, { fields: [groupMembers.userId], references: [users.id] }),
+}))
+
+export const groupBansRelations = relations(groupBans, ({ one }) => ({
+  group: one(groups, { fields: [groupBans.groupId], references: [groups.id] }),
+  user: one(users, { fields: [groupBans.userId], references: [users.id] }),
 }))
 
 export const raidsRelations = relations(raids, ({ many }) => ({

@@ -1,0 +1,26 @@
+import { db } from "@/db"
+import { characterRaids } from "@/db/schema"
+import { NextResponse } from "next/server"
+import { timingSafeEqual } from "crypto"
+
+function validateApiKey(req: Request): boolean {
+  const apiKey = req.headers.get("x-api-key")
+  if (!apiKey || !process.env.RESET_API_KEY) return false
+
+  const keyBuffer = Buffer.from(apiKey)
+  const storedBuffer = Buffer.from(process.env.RESET_API_KEY)
+
+  if (keyBuffer.length !== storedBuffer.length) return false
+
+  return timingSafeEqual(keyBuffer, storedBuffer)
+}
+
+export async function POST(req: Request) {
+  if (!validateApiKey(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  await db.update(characterRaids).set({ completed: false })
+
+  return NextResponse.json({ success: true })
+}

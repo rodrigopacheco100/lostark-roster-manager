@@ -1,0 +1,1 @@
+ALTER TABLE "character_raids" ADD COLUMN "completed" boolean DEFAULT false NOT NULL;

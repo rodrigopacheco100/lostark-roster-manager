@@ -2,6 +2,7 @@ import { db } from "@/db"
 import {
   rosters, characters, friendRequests, friendships, users,
   raids, raidDifficulties, characterRaids, FriendRequestStatus, LostArkClass,
+  groups, groupMembers, groupBans, GroupRole,
 } from "@/db/schema"
 import { eq, and, or, like, not, inArray, sql } from "drizzle-orm"
 
@@ -235,4 +236,192 @@ export function assignRaidToCharacter(characterId: string, raidDifficultyId: str
 
 export function removeCharacterRaid(id: string) {
   return db.delete(characterRaids).where(eq(characterRaids.id, id)).returning()
+}
+
+export function toggleRaidCompletion(characterId: string, raidDifficultyId: string, completed: boolean) {
+  return db
+    .update(characterRaids)
+    .set({ completed })
+    .where(
+      and(
+        eq(characterRaids.characterId, characterId),
+        eq(characterRaids.raidDifficultyId, raidDifficultyId),
+      ),
+    )
+    .returning()
+}
+
+export function getCharacterWithRoster(characterId: string) {
+  return db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    with: { roster: true },
+  })
+}
+
+/* ───────── GROUPS ───────── */
+export function getUserGroups(userId: string) {
+  return db.query.groupMembers.findMany({
+    where: eq(groupMembers.userId, userId),
+    with: {
+      group: {
+        with: {
+          members: {
+            columns: { id: true },
+          },
+        },
+      },
+    },
+  })
+}
+
+export function getGroupDetails(groupId: string, userId: string) {
+  return db.query.groupMembers.findFirst({
+    where: and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, userId)),
+    with: {
+      group: {
+        with: {
+          members: {
+            with: { user: { columns: { id: true, name: true, image: true } } },
+          },
+          bans: {
+            with: { user: { columns: { id: true, name: true, image: true } } },
+          },
+        },
+      },
+    },
+  })
+}
+
+export function createGroup(name: string, userId: string) {
+  const inviteCode = `GC${Date.now()}`
+  return db.transaction(async (tx) => {
+    const [group] = await tx.insert(groups).values({ name, inviteCode }).returning()
+    await tx.insert(groupMembers).values({ groupId: group.id, userId, role: GroupRole.Owner })
+    return group
+  })
+}
+
+export function deleteGroup(groupId: string, userId: string) {
+  return db
+    .delete(groups)
+    .where(eq(groups.id, groupId))
+    .returning()
+}
+
+export function getGroupOwner(groupId: string) {
+  return db.query.groupMembers.findFirst({
+    where: and(eq(groupMembers.groupId, groupId), eq(groupMembers.role, GroupRole.Owner)),
+  })
+}
+
+export function transferOwnership(groupId: string, fromUserId: string, toUserId: string) {
+  return db.transaction(async (tx) => {
+    await tx
+      .update(groupMembers)
+      .set({ role: GroupRole.Member })
+      .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, fromUserId)))
+    await tx
+      .update(groupMembers)
+      .set({ role: GroupRole.Owner })
+      .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, toUserId)))
+  })
+}
+
+export function updateGroupName(groupId: string, userId: string, name: string) {
+  return db
+    .update(groups)
+    .set({ name })
+    .where(eq(groups.id, groupId))
+    .returning()
+}
+
+export function changeMemberRole(groupId: string, targetUserId: string, role: GroupRole) {
+  return db
+    .update(groupMembers)
+    .set({ role })
+    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, targetUserId)))
+    .returning()
+}
+
+export function joinGroup(groupId: string, userId: string) {
+  return db.insert(groupMembers).values({ groupId, userId, role: GroupRole.Member }).returning()
+}
+
+export function leaveGroup(groupId: string, userId: string) {
+  return db
+    .delete(groupMembers)
+    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, userId)))
+    .returning()
+}
+
+export function getGroupMember(groupId: string, userId: string) {
+  return db.query.groupMembers.findFirst({
+    where: and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, userId)),
+    with: { user: { columns: { id: true, name: true, image: true } } },
+  })
+}
+
+export function isUserBanned(groupId: string, userId: string) {
+  return db.query.groupBans.findFirst({
+    where: and(eq(groupBans.groupId, groupId), eq(groupBans.userId, userId)),
+  })
+}
+
+export function getGroupMemberByRole(groupId: string, role: GroupRole) {
+  return db.query.groupMembers.findMany({
+    where: and(eq(groupMembers.groupId, groupId), eq(groupMembers.role, role)),
+  })
+}
+
+export function kickMember(groupId: string, targetUserId: string) {
+  return db
+    .delete(groupMembers)
+    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, targetUserId)))
+    .returning()
+}
+
+export function banUser(groupId: string, userId: string) {
+  return db.transaction(async (tx) => {
+    await tx
+      .delete(groupMembers)
+      .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, userId)))
+    const [ban] = await tx.insert(groupBans).values({ groupId, userId }).returning()
+    return ban
+  })
+}
+
+export function unbanUser(groupId: string, userId: string) {
+  return db
+    .delete(groupBans)
+    .where(and(eq(groupBans.groupId, groupId), eq(groupBans.userId, userId)))
+    .returning()
+}
+
+export function getGroupByInviteCode(code: string) {
+  return db.query.groups.findFirst({
+    where: eq(groups.inviteCode, code),
+    columns: { id: true, name: true, inviteCode: true },
+    with: {
+      members: {
+        columns: { id: true },
+      },
+    },
+  })
+}
+
+export function getGroupsWithMembers(userId: string) {
+  return db.query.groupMembers.findMany({
+    where: eq(groupMembers.userId, userId),
+    with: {
+      group: {
+        with: {
+          members: {
+            with: {
+              user: { columns: { id: true, name: true, image: true } },
+            },
+          },
+        },
+      },
+    },
+  })
 }

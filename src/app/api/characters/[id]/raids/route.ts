@@ -1,9 +1,10 @@
 import { auth } from "@/lib/auth"
-import { getCharacterRaids, assignRaidToCharacter, removeCharacterRaid } from "@/lib/queries"
+import { getCharacterRaids, assignRaidToCharacter, removeCharacterRaid, toggleRaidCompletion, getCharacterWithRoster } from "@/lib/queries"
 import { db } from "@/db"
 import { raidDifficulties } from "@/db/schema"
 import { eq } from "drizzle-orm"
 import { NextResponse } from "next/server"
+import { z } from "zod"
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await auth()
@@ -50,4 +51,36 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 
   await removeCharacterRaid(characterRaidId)
   return NextResponse.json({ success: true })
+}
+
+const toggleSchema = z.object({
+  raidDifficultyId: z.string(),
+  completed: z.boolean(),
+})
+
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const body = await req.json().catch(() => null)
+  if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
+
+  const parsed = toggleSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 })
+  }
+
+  const { raidDifficultyId, completed } = parsed.data
+
+  const character = await getCharacterWithRoster(params.id)
+  if (!character) return NextResponse.json({ error: "Character not found" }, { status: 404 })
+
+  if (character.roster.userId !== session.user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  const [result] = await toggleRaidCompletion(params.id, raidDifficultyId, completed)
+  if (!result) return NextResponse.json({ error: "Raid assignment not found" }, { status: 404 })
+
+  return NextResponse.json(result)
 }

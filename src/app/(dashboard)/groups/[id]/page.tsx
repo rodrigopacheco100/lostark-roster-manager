@@ -15,7 +15,7 @@ import {
   UserMinus,
 } from "lucide-react"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Badge, Button, Card } from "@/components/ui"
 import { useConfirm } from "@/hooks/useConfirm"
@@ -39,7 +39,9 @@ type GroupDetail = {
   bans?: { id: string; name: string; image: string | null; bannedAt: string }[]
 }
 
-export default function GroupDetailPage({ params }: { params: { id: string } }) {
+export default function GroupDetailPage() {
+  const params = useParams<{id: string}>()
+  const groupId = params.id
   const router = useRouter()
   const queryClient = useQueryClient()
   const {
@@ -47,8 +49,8 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
     isError: groupFetchFailed,
     error,
   } = useQuery<GroupDetail>({
-    queryKey: [`/api/groups/${params.id}`],
-    queryFn: () => httpClient.get<GroupDetail>(`/api/groups/${params.id}`),
+    queryKey: [`/api/groups/${groupId}`],
+    queryFn: () => httpClient.get<GroupDetail>(`/api/groups/${groupId}`),
     staleTime: 10_000,
     retry: false,
   })
@@ -97,12 +99,12 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
       cancelLabel: "Cancel",
     })
     if (!ok) return
-    await promise(groupMutation.mutateAsync({ url: `/api/groups/${params.id}/leave`, method: "POST" }), {
+    await promise(groupMutation.mutateAsync({ url: `/api/groups/${groupId}/leave`, method: "POST" }), {
       loading: "Please wait...",
       success: "You left the group",
       error: (err: Error) => err.message,
     })
-    queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
+    queryClient.invalidateQueries({ queryKey: [`/api/groups/${groupId}`] })
     router.push("/groups")
   }
 
@@ -121,12 +123,12 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
       destructive: true,
     })
     if (!ok) return
-    await promise(groupMutation.mutateAsync({ url: `/api/groups/${params.id}`, method: "DELETE" }), {
+    await promise(groupMutation.mutateAsync({ url: `/api/groups/${groupId}`, method: "DELETE" }), {
       loading: "Please wait...",
       success: `Group ${group.name} deleted`,
       error: (err: Error) => err.message,
     })
-    queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
+    queryClient.invalidateQueries({ queryKey: [`/api/groups/${groupId}`] })
     router.push("/groups")
   }
 
@@ -140,21 +142,21 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
     })
     if (!ok) return
     await promise(
-      groupMutation.mutateAsync({ url: `/api/groups/${params.id}/transfer`, method: "POST", body: { targetUserId } }),
+      groupMutation.mutateAsync({ url: `/api/groups/${groupId}/transfer`, method: "POST", body: { targetUserId } }),
       {
         loading: "Please wait...",
         success: `Ownership transferred to ${targetName}`,
         error: (err: Error) => err.message,
       },
     )
-    queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
+    queryClient.invalidateQueries({ queryKey: [`/api/groups/${groupId}`] })
   }
 
   async function handleChangeRole(targetUserId: string, role: string) {
     const targetName = group?.members.find((m) => m.id === targetUserId)?.name
     await promise(
       groupMutation.mutateAsync({
-        url: `/api/groups/${params.id}/members/${targetUserId}/role`,
+        url: `/api/groups/${groupId}/members/${targetUserId}/role`,
         method: "PUT",
         body: { role },
       }),
@@ -164,7 +166,7 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
         error: (err: Error) => err.message,
       },
     )
-    queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
+    queryClient.invalidateQueries({ queryKey: [`/api/groups/${groupId}`] })
   }
 
   async function handleKick(targetUserId: string) {
@@ -178,13 +180,13 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
     if (!ok) return
     await promise(
       groupMutation.mutateAsync({
-        url: `/api/groups/${params.id}/kick`,
+        url: `/api/groups/${groupId}/kick`,
         method: "POST",
         body: { userId: targetUserId },
       }),
       { loading: "Please wait...", success: `${targetName} removed from group`, error: (err: Error) => err.message },
     )
-    queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
+    queryClient.invalidateQueries({ queryKey: [`/api/groups/${groupId}`] })
   }
 
   async function handleBan(targetUserId: string) {
@@ -199,25 +201,25 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
     if (!ok) return
     await promise(
       groupMutation.mutateAsync({
-        url: `/api/groups/${params.id}/ban`,
+        url: `/api/groups/${groupId}/ban`,
         method: "POST",
         body: { userId: targetUserId },
       }),
       { loading: "Please wait...", success: `${targetName} banned`, error: (err: Error) => err.message },
     )
-    queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
+    queryClient.invalidateQueries({ queryKey: [`/api/groups/${groupId}`] })
   }
 
   async function handleUnban(targetUserId: string) {
     await promise(
       groupMutation.mutateAsync({
-        url: `/api/groups/${params.id}/unban`,
+        url: `/api/groups/${groupId}/unban`,
         method: "POST",
         body: { userId: targetUserId },
       }),
       { loading: "Please wait...", success: "Ban removed", error: (err: Error) => err.message },
     )
-    queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
+    queryClient.invalidateQueries({ queryKey: [`/api/groups/${groupId}`] })
   }
 
   if (!group) {

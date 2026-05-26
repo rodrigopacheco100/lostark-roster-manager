@@ -15,31 +15,47 @@ export enum GroupRole {
 }
 
 export enum LostArkClass {
-  Artist = "Artist",
+  // Warriors
   Berserker = "Berserker",
   Destroyer = "Destroyer",
   Gunlancer = "Gunlancer",
   Paladin = "Paladin",
+  Slayer = "Slayer",
+
+  // Mages
   Arcanist = "Arcanist",
   Summoner = "Summoner",
   Bard = "Bard",
   Sorceress = "Sorceress",
-  Deathblade = "Deathblade",
-  Shadowhunter = "Shadowhunter",
-  Reaper = "Reaper",
-  Souleater = "Souleater",
-  Sharpshooter = "Sharpshooter",
-  Deadeye = "Deadeye",
-  Artillerist = "Artillerist",
-  Machinist = "Machinist",
-  Striker = "Striker",
+  
+  // Martial Artists
   Wardancer = "Wardancer",
   Scrapper = "Scrapper",
   Soulfist = "Soulfist",
   Glaivier = "Glaivier",
+  Striker = "Striker",
+  Breaker = "Breaker",
+
+  // Assassins
+  Deathblade = "Deathblade",
+  Shadowhunter = "Shadowhunter",
+  Reaper = "Reaper",
+  Souleater = "Souleater",
+  
+  // Gunner
+  Sharpshooter = "Sharpshooter",
+  Deadeye = "Deadeye",
+  Artillerist = "Artillerist",
+  Machinist = "Machinist",
   Gunslinger = "Gunslinger",
-  Slayer = "Slayer",
+  
+  // Specialist
+  Artist = "Artist",
+  Aeromancer = "Aeromancer",
   Wildsoul = "Wildsoul",
+
+  // Guardian knight
+  GuardianKnight = "GuardianKnight",
 }
 
 /* ───────── USERS ───────── */

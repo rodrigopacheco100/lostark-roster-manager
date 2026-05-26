@@ -7,7 +7,7 @@ Full-stack application for tracking raid progress across Lost Ark rosters and fr
 - **Framework**: Next.js 14 (App Router, TypeScript, Tailwind CSS)
 - **Database**: PostgreSQL (Docker Compose for local, Supabase for production)
 - **ORM**: Drizzle
-- **Auth**: NextAuth.js v5 (Auth.js) with Google OAuth
+- **Auth**: NextAuth.js v5 (Auth.js) with Google and Discord OAuth
 - **Validation**: Zod
 - **Data Fetching**: SWR for client-side polling
 

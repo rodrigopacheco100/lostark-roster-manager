@@ -4,17 +4,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Card, Skeleton, PageHeader } from "@/components/ui"
 import { OwnerSection } from "./_compose/OwnerSection"
 import type { DashboardData } from "./_types"
-
-async function fetcher<T>(url: string): Promise<T> {
-  const res = await fetch(url)
-  return res.json()
-}
+import { http } from "@/lib/api"
 
 export default function DashboardPage() {
   const queryClient = useQueryClient()
   const { data: dashData } = useQuery({
     queryKey: ["dashboard"],
-    queryFn: () => fetcher<DashboardData>("/api/dashboard"),
+    queryFn: () => http.get<DashboardData>("/api/dashboard"),
     refetchInterval: 60000,
   })
 

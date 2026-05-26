@@ -1,12 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import useSWR from "swr"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
+import { Plus, Pencil, Trash2, Sword, Check, X } from "lucide-react"
 import { Card, Button, Input, PageHeader, EmptyState } from "@/components/ui"
-import { Sword, Plus, Pencil, Trash2, X, Check } from "lucide-react"
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+import { useConfirm } from "@/hooks/useConfirm"
+import { useToast } from "@/hooks/useToast"
+import { http } from "@/lib/api"
 
 type Roster = {
   id: string
@@ -15,38 +16,67 @@ type Roster = {
 }
 
 export default function RostersPage() {
-  const { data: rosters, mutate } = useSWR<Roster[]>("/api/rosters", fetcher)
+  const queryClient = useQueryClient()
+  const { toast, promise } = useToast()
+  const { data: rosters } = useQuery<Roster[]>({
+    queryKey: ["/api/rosters"],
+    queryFn: () => http.get<Roster[]>("/api/rosters"),
+  })
   const [newName, setNewName] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState("")
+  const { confirm } = useConfirm()
+
+  const createMutation = useMutation({
+    mutationFn: (name: string) =>
+      http.post<Roster>("/api/rosters", { name }),
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      http.put(`/api/rosters/${id}`, { name }),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) =>
+      http.delete(`/api/rosters/${id}`),
+  })
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     if (!newName.trim()) return
-    await fetch("/api/rosters", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newName }),
-    })
+    await promise(
+      createMutation.mutateAsync(newName),
+      { loading: "Creating...", success: "Roster created!", error: (err: Error) => err.message },
+    )
     setNewName("")
-    mutate()
+    queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
   }
 
   async function handleUpdate(id: string) {
     if (!editName.trim()) return
-    await fetch(`/api/rosters/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editName }),
-    })
+    await promise(
+      updateMutation.mutateAsync({ id, name: editName }),
+      { loading: "Updating...", success: "Roster updated!", error: (err: Error) => err.message },
+    )
     setEditingId(null)
-    mutate()
+    queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this roster and all its characters?")) return
-    await fetch(`/api/rosters/${id}`, { method: "DELETE" })
-    mutate()
+    const ok = await confirm({
+      title: "Delete roster",
+      message: "Delete this roster and all its characters? This cannot be undone.",
+      confirmLabel: "Delete",
+      cancelLabel: "Cancel",
+      destructive: true,
+    })
+    if (!ok) return
+    await promise(
+      deleteMutation.mutateAsync(id),
+      { loading: "Deleting...", success: "Roster deleted", error: (err: Error) => err.message },
+    )
+    queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
   }
 
   return (

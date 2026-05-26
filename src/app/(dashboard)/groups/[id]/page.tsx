@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
-import useSWR from "swr"
+import { useState, useEffect } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
-import { Card, Button, Input, PageHeader, Badge, Modal } from "@/components/ui"
+import { Card, Button, Badge } from "@/components/ui"
+import { useConfirm } from "@/hooks/useConfirm"
+import { useToast } from "@/hooks/useToast"
 import { Copy, LogOut, Trash2, Crown, Shield, User, UserMinus, Ban, UserCheck, ArrowLeftRight, ArrowLeft } from "lucide-react"
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+import { http } from "@/lib/api"
 
 type Member = {
   id: string
@@ -27,32 +28,39 @@ type GroupDetail = {
 
 export default function GroupDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const { data: group, mutate } = useSWR<GroupDetail>(`/api/groups/${params.id}`, fetcher)
-  const { data: currentUser } = useSWR<{ id: string }>("/api/user/me", fetcher)
+  const queryClient = useQueryClient()
+  const { data: group, isError: groupFetchFailed, error } = useQuery<GroupDetail>({
+    queryKey: [`/api/groups/${params.id}`],
+    queryFn: () => http.get<GroupDetail>(`/api/groups/${params.id}`),
+    retry: false,
+  })
+  const { data: currentUser } = useQuery<{ id: string }>({
+    queryKey: ["/api/user/me"],
+    queryFn: () => http.get<{ id: string }>("/api/user/me"),
+  })
+  const { confirm } = useConfirm()
+  const { toast, promise } = useToast()
+
+  useEffect(() => {
+    if (groupFetchFailed) {
+      toast(error instanceof Error ? error.message : "Error loading group", "error")
+      router.push("/groups")
+    }
+  }, [groupFetchFailed])
 
   const [copied, setCopied] = useState(false)
-  const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   const myMembership = group?.members.find((m) => m.id === currentUser?.id)
   const isOwner = myMembership?.role === "owner"
   const isAdmin = myMembership?.role === "admin" || isOwner
 
-  async function handleAction(url: string, method: string, body?: object) {
-    setActionLoading(url)
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: body ? JSON.stringify(body) : undefined,
-    })
-    setActionLoading(null)
-    if (!res.ok) {
-      const err = await res.json()
-      alert(err.error ?? "Action failed")
-      return false
-    }
-    mutate()
-    return true
-  }
+  const groupMutation = useMutation({
+    mutationFn: ({ url, method, body }: { url: string; method: string; body?: object }) => {
+      if (method === "PUT") return http.put(url, body)
+      if (method === "DELETE") return http.delete(url)
+      return http.post(url, body)
+    },
+  })
 
   async function handleCopyCode() {
     if (!group) return
@@ -63,41 +71,108 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
   }
 
   async function handleLeave() {
-    if (!confirm("Sair do grupo?")) return
-    const ok = await handleAction(`/api/groups/${params.id}/leave`, "POST")
-    if (ok) router.push("/groups")
+    const ok = await confirm({
+      title: "Leave group",
+      message: "Are you sure you want to leave this group?",
+      confirmLabel: "Leave",
+      cancelLabel: "Cancel",
+    })
+    if (!ok) return
+    await promise(
+      groupMutation.mutateAsync({ url: `/api/groups/${params.id}/leave`, method: "POST" }),
+      { loading: "Please wait...", success: "You left the group", error: (err: Error) => err.message },
+    )
+    queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
+    router.push("/groups")
   }
 
   async function handleDelete() {
-    if (!confirm("Tem certeza que deseja excluir este grupo? Esta ação não pode ser desfeita.")) return
-    const ok = await handleAction(`/api/groups/${params.id}`, "DELETE")
-    if (ok) router.push("/groups")
+    if (!group) {
+      toast("Group not found", "error")
+      router.push("/groups")
+      return
+    }
+
+    const ok = await confirm({
+      title: "Delete group",
+      message: "Are you sure you want to delete this group? This action cannot be undone.",
+      confirmLabel: "Delete",
+      cancelLabel: "Cancel",
+      destructive: true,
+    })
+    if (!ok) return
+    await promise(
+      groupMutation.mutateAsync({ url: `/api/groups/${params.id}`, method: "DELETE" }),
+      { loading: "Please wait...", success: `Group ${group.name} deleted`, error: (err: Error) => err.message },
+    )
+    queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
+    router.push("/groups")
   }
 
   async function handleTransfer(targetUserId: string) {
     const targetName = group?.members.find((m) => m.id === targetUserId)?.name
-    if (!confirm(`Transferir liderança para ${targetName}?`)) return
-    await handleAction(`/api/groups/${params.id}/transfer`, "POST", { targetUserId })
+    const ok = await confirm({
+      title: "Transfer ownership",
+      message: `Transfer group ownership to ${targetName}?`,
+      confirmLabel: "Transfer",
+      cancelLabel: "Cancel",
+    })
+    if (!ok) return
+    await promise(
+      groupMutation.mutateAsync({ url: `/api/groups/${params.id}/transfer`, method: "POST", body: { targetUserId } }),
+      { loading: "Please wait...", success: `Ownership transferred to ${targetName}`, error: (err: Error) => err.message },
+    )
+    queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
   }
 
   async function handleChangeRole(targetUserId: string, role: string) {
-    await handleAction(`/api/groups/${params.id}/members/${targetUserId}/role`, "PUT", { role })
+    const targetName = group?.members.find((m) => m.id === targetUserId)?.name
+    await promise(
+      groupMutation.mutateAsync({ url: `/api/groups/${params.id}/members/${targetUserId}/role`, method: "PUT", body: { role } }),
+      { loading: "Please wait...", success: role === "admin" ? `${targetName} promoted to admin` : `${targetName} demoted to member`, error: (err: Error) => err.message },
+    )
+    queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
   }
 
   async function handleKick(targetUserId: string) {
     const targetName = group?.members.find((m) => m.id === targetUserId)?.name
-    if (!confirm(`Remover ${targetName} do grupo?`)) return
-    await handleAction(`/api/groups/${params.id}/kick`, "POST", { userId: targetUserId })
+    const ok = await confirm({
+      title: "Remove member",
+      message: `Remove ${targetName} from the group?`,
+      confirmLabel: "Remove",
+      cancelLabel: "Cancel",
+    })
+    if (!ok) return
+    await promise(
+      groupMutation.mutateAsync({ url: `/api/groups/${params.id}/kick`, method: "POST", body: { userId: targetUserId } }),
+      { loading: "Please wait...", success: `${targetName} removed from group`, error: (err: Error) => err.message },
+    )
+    queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
   }
 
   async function handleBan(targetUserId: string) {
     const targetName = group?.members.find((m) => m.id === targetUserId)?.name
-    if (!confirm(`Banir ${targetName} do grupo?`)) return
-    await handleAction(`/api/groups/${params.id}/ban`, "POST", { userId: targetUserId })
+    const ok = await confirm({
+      title: "Ban member",
+      message: `Ban ${targetName} from the group? They will not be able to rejoin via invite link.`,
+      confirmLabel: "Ban",
+      cancelLabel: "Cancel",
+      destructive: true,
+    })
+    if (!ok) return
+    await promise(
+      groupMutation.mutateAsync({ url: `/api/groups/${params.id}/ban`, method: "POST", body: { userId: targetUserId } }),
+      { loading: "Please wait...", success: `${targetName} banned`, error: (err: Error) => err.message },
+    )
+    queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
   }
 
   async function handleUnban(targetUserId: string) {
-    await handleAction(`/api/groups/${params.id}/unban`, "POST", { userId: targetUserId })
+    await promise(
+      groupMutation.mutateAsync({ url: `/api/groups/${params.id}/unban`, method: "POST", body: { userId: targetUserId } }),
+      { loading: "Please wait...", success: "Ban removed", error: (err: Error) => err.message },
+    )
+    queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
   }
 
   if (!group) {
@@ -118,32 +193,32 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
         <div className="flex gap-2">
           {!isOwner && (
             <Button variant="ghost" onClick={handleLeave} icon={<LogOut className="h-4 w-4" />}>
-              Sair do grupo
+              Leave group
             </Button>
           )}
           {isOwner && (
             <Button variant="ghost" onClick={handleDelete} icon={<Trash2 className="h-4 w-4 text-danger" />}>
-              Excluir grupo
+              Delete group
             </Button>
           )}
         </div>
       </div>
 
       <div className="mb-6">
-        <p className="mb-2 text-sm font-medium text-gray-400">Link de Convite</p>
+        <p className="mb-2 text-sm font-medium text-gray-400">Invite Link</p>
         <div className="flex items-center gap-2 rounded-lg bg-surface-hover px-4 py-3">
           <code className="flex-1 truncate font-mono text-sm text-blue-400">
             {typeof window !== "undefined" ? `${window.location.origin}/groups/join?code=${group.inviteCode}` : group.inviteCode}
           </code>
           <Button variant="ghost" size="sm" onClick={handleCopyCode} icon={<Copy className="h-4 w-4" />}>
-            {copied ? "Copiado!" : "Copiar"}
+            {copied ? "Copied!" : "Copy"}
           </Button>
         </div>
       </div>
 
       <div className="mb-6">
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold text-gray-200">Membros ({group.members.length})</h2>
+          <h2 className="text-lg font-semibold text-gray-200">Members ({group.members.length})</h2>
         </div>
         <div className="mt-3 space-y-2">
           {group.members.map((member) => {
@@ -159,19 +234,19 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
                       <p className="font-medium text-gray-200">
                         {member.name}
                         {member.id === currentUser?.id && (
-                          <span className="ml-1 text-sm text-gray-500">(você)</span>
+                          <span className="ml-1 text-sm text-gray-500">(you)</span>
                         )}
                       </p>
                       <Badge
                         color={
                           member.role === "owner" ? "yellow" :
-                          member.role === "admin" ? "blue" : "gray"
+                            member.role === "admin" ? "blue" : "gray"
                         }
                       >
                         {member.role === "owner" ? <Crown className="mr-1 h-3 w-3 inline" /> :
                           member.role === "admin" ? <Shield className="mr-1 h-3 w-3 inline" /> :
                             <User className="mr-1 h-3 w-3 inline" />}
-                        {member.role === "owner" ? "Dono" : member.role === "admin" ? "Admin" : "Membro"}
+                        {member.role === "owner" ? "Owner" : member.role === "admin" ? "Admin" : "Member"}
                       </Badge>
                     </div>
                   </div>
@@ -185,7 +260,7 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
                           variant="ghost"
                           onClick={() => handleTransfer(member.id)}
                           icon={<ArrowLeftRight className="h-4 w-4" />}
-                          title="Transferir liderança"
+                          title="Transfer ownership"
                         />
                         {member.role === "member" ? (
                           <Button
@@ -193,7 +268,7 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
                             variant="ghost"
                             onClick={() => handleChangeRole(member.id, "admin")}
                             icon={<Shield className="h-4 w-4" />}
-                            title="Promover a admin"
+                            title="Promote to admin"
                           />
                         ) : (
                           <Button
@@ -201,7 +276,7 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
                             variant="ghost"
                             onClick={() => handleChangeRole(member.id, "member")}
                             icon={<User className="h-4 w-4" />}
-                            title="Rebaixar a membro"
+                            title="Demote to member"
                           />
                         )}
                       </>
@@ -211,14 +286,14 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
                       variant="ghost"
                       onClick={() => handleKick(member.id)}
                       icon={<UserMinus className="h-4 w-4" />}
-                      title="Remover"
+                      title="Remove"
                     />
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => handleBan(member.id)}
                       icon={<Ban className="h-4 w-4 text-danger" />}
-                      title="Banir"
+                      title="Ban"
                     />
                   </div>
                 )}
@@ -230,7 +305,7 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
 
       {group.bans && group.bans.length > 0 && (
         <div>
-          <h2 className="mb-3 text-lg font-semibold text-gray-200">Banidos ({group.bans.length})</h2>
+          <h2 className="mb-3 text-lg font-semibold text-gray-200">Banned ({group.bans.length})</h2>
           <div className="space-y-2">
             {group.bans.map((ban) => (
               <Card key={ban.id} className="flex items-center justify-between">
@@ -244,7 +319,7 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
                   onClick={() => handleUnban(ban.id)}
                   icon={<UserCheck className="h-4 w-4" />}
                 >
-                  Desbanir
+                  Unban
                 </Button>
               </Card>
             ))}

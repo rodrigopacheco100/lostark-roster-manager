@@ -9,7 +9,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const membership = await getGroupDetails(params.id, session.user.id)
-  if (!membership) return NextResponse.json({ error: "Not a member" }, { status: 403 })
+  if (!membership) return NextResponse.json({ error: "Group not found or you are not a member" }, { status: 404 })
 
   const group = membership.group
   return NextResponse.json({

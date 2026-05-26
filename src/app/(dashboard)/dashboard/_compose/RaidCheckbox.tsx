@@ -2,6 +2,7 @@
 
 import { useMutation } from "@tanstack/react-query"
 import { Check, X } from "lucide-react"
+import { http } from "@/lib/api"
 import type { CharacterRaidData } from "../_types"
 
 export function RaidCheckbox({
@@ -17,13 +18,7 @@ export function RaidCheckbox({
 }) {
   const { mutate, isPending } = useMutation({
     mutationFn: ({ raidDifficultyId, completed }: { raidDifficultyId: string; completed: boolean }) =>
-      fetch(`/api/characters/${characterId}/raids`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ raidDifficultyId, completed }),
-      }).then((r) => {
-        if (!r.ok) throw new Error("Failed to toggle")
-      }),
+      http.patch(`/api/characters/${characterId}/raids`, { raidDifficultyId, completed }),
     onSuccess: () => onToggle(),
   })
 

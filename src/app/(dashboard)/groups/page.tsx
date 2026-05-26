@@ -1,12 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import useSWR from "swr"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import { Card, Button, Input, PageHeader, EmptyState, Modal } from "@/components/ui"
-import { Users, UserPlus, Plus, LogOut, Copy, ArrowRight } from "lucide-react"
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+import { useToast } from "@/hooks/useToast"
+import { Users, UserPlus, Plus, Copy } from "lucide-react"
+import { http } from "@/lib/api"
 
 type Group = {
   id: string
@@ -17,11 +17,15 @@ type Group = {
 }
 
 export default function GroupsPage() {
-  const { data: groups, mutate } = useSWR<Group[]>("/api/groups", fetcher)
+  const queryClient = useQueryClient()
+  const { toast, promise } = useToast()
+  const { data: groups } = useQuery<Group[]>({
+    queryKey: ["/api/groups"],
+    queryFn: () => http.get<Group[]>("/api/groups"),
+  })
 
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [createName, setCreateName] = useState("")
-  const [createError, setCreateError] = useState("")
 
   const [joinModalOpen, setJoinModalOpen] = useState(false)
   const [inviteCodeInput, setInviteCodeInput] = useState("")
@@ -30,22 +34,25 @@ export default function GroupsPage() {
 
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
 
+  const createMutation = useMutation({
+    mutationFn: (name: string) =>
+      http.post<Group>("/api/groups", { name }),
+  })
+
+  const joinMutation = useMutation({
+    mutationFn: ({ groupId, inviteCode }: { groupId: string; inviteCode: string }) =>
+      http.post(`/api/groups/${groupId}/join`, { inviteCode }),
+  })
+
   async function handleCreate() {
-    setCreateError("")
     if (!createName.trim()) return
-    const res = await fetch("/api/groups", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: createName.trim() }),
-    })
-    if (!res.ok) {
-      const err = await res.json()
-      setCreateError(err.error?.fieldErrors?.name?.[0] ?? "Failed to create group")
-      return
-    }
+    await promise(
+      createMutation.mutateAsync(createName.trim()),
+      { loading: "Creating group...", success: "Group created!", error: (err: Error) => err.message },
+    )
     setCreateName("")
     setCreateModalOpen(false)
-    mutate()
+    queryClient.invalidateQueries({ queryKey: ["/api/groups"] })
   }
 
   async function handleResolveCode() {
@@ -55,32 +62,24 @@ export default function GroupsPage() {
       setJoinError("Enter an invite code")
       return
     }
-    const res = await fetch(`/api/groups/join?code=${encodeURIComponent(inviteCodeInput.trim())}`)
-    if (!res.ok) {
-      const err = await res.json()
-      setJoinError(err.error ?? "Invalid invite code")
-      return
+    try {
+      const data = await http.get<{ id: string; name: string; memberCount: number }>(`/api/groups/join?code=${encodeURIComponent(inviteCodeInput.trim())}`)
+      setJoinPreview(data)
+    } catch (err) {
+      setJoinError(err instanceof Error ? err.message : "Invalid invite code")
     }
-    const data = await res.json()
-    setJoinPreview(data)
   }
 
   async function handleJoin() {
     if (!joinPreview) return
-    const res = await fetch(`/api/groups/${joinPreview.id}/join`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ inviteCode: inviteCodeInput.trim() }),
-    })
-    if (!res.ok) {
-      const err = await res.json()
-      setJoinError(err.error ?? "Failed to join group")
-      return
-    }
+    await promise(
+      joinMutation.mutateAsync({ groupId: joinPreview.id, inviteCode: inviteCodeInput.trim() }),
+      { loading: "Joining...", success: `You joined ${joinPreview.name}!`, error: (err: Error) => err.message },
+    )
     setInviteCodeInput("")
     setJoinPreview(null)
     setJoinModalOpen(false)
-    mutate()
+    queryClient.invalidateQueries({ queryKey: ["/api/groups"] })
   }
 
   async function handleCopyCode(code: string) {
@@ -92,53 +91,52 @@ export default function GroupsPage() {
   return (
     <div>
       <PageHeader
-        title="Grupos"
+        title="Groups"
         action={
           <div className="flex gap-2">
             <Button onClick={() => setJoinModalOpen(true)} icon={<UserPlus className="h-4 w-4" />}>
-              Entrar
+              Join
             </Button>
             <Button onClick={() => setCreateModalOpen(true)} icon={<Plus className="h-4 w-4" />}>
-              Criar Grupo
+              Create Group
             </Button>
           </div>
         }
       />
 
-      <Modal isOpen={createModalOpen} onClose={() => { setCreateModalOpen(false); setCreateName(""); setCreateError("") }} title="Criar Grupo">
+      <Modal isOpen={createModalOpen} onClose={() => { setCreateModalOpen(false); setCreateName("") }} title="Create Group">
         <div className="space-y-4">
           <Input
             value={createName}
             onChange={(e) => setCreateName(e.target.value)}
-            placeholder="Nome do grupo..."
+            placeholder="Group name..."
           />
-          {createError && <p className="text-xs text-danger">{createError}</p>}
           <Button onClick={handleCreate} className="w-full">
-            Criar
+            Create
           </Button>
         </div>
       </Modal>
 
-      <Modal isOpen={joinModalOpen} onClose={() => { setJoinModalOpen(false); setInviteCodeInput(""); setJoinPreview(null); setJoinError("") }} title="Entrar em Grupo">
+      <Modal isOpen={joinModalOpen} onClose={() => { setJoinModalOpen(false); setInviteCodeInput(""); setJoinPreview(null); setJoinError("") }} title="Join Group">
         <div className="space-y-4">
           <Input
             value={inviteCodeInput}
             onChange={(e) => setInviteCodeInput(e.target.value)}
-            placeholder="Código de convite..."
-            
+            placeholder="Invite code..."
+
           />
           {!joinPreview && (
             <Button onClick={handleResolveCode} className="w-full" variant="secondary">
-              Buscar Grupo
+              Find Group
             </Button>
           )}
           {joinError && <p className="text-xs text-danger">{joinError}</p>}
           {joinPreview && (
             <div className="rounded-lg border border-gray-700 bg-surface-hover p-4">
               <p className="font-medium text-gray-200">{joinPreview.name}</p>
-              <p className="text-sm text-gray-500">{joinPreview.memberCount} membro(s)</p>
+              <p className="text-sm text-gray-500">{joinPreview.memberCount} member(s)</p>
               <Button onClick={handleJoin} className="mt-3 w-full">
-                Entrar
+                Join
               </Button>
             </div>
           )}
@@ -148,8 +146,8 @@ export default function GroupsPage() {
       {groups?.length === 0 ? (
         <EmptyState
           icon={<Users className="h-12 w-12" />}
-          title="Nenhum grupo"
-          description="Crie um grupo ou entre em um usando o código de convite."
+          title="No groups"
+          description="Create a group or join one using an invite code."
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -159,9 +157,9 @@ export default function GroupsPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-200">{group.name}</h3>
-                    <p className="mt-1 text-sm text-gray-500">{group.memberCount} membro(s)</p>
+                    <p className="mt-1 text-sm text-gray-500">{group.memberCount} member(s)</p>
                     <span className="mt-1 inline-block rounded-full bg-surface-hover px-2 py-0.5 text-xs capitalize text-gray-400">
-                      {group.role === "owner" ? "Dono" : group.role === "admin" ? "Admin" : "Membro"}
+                      {group.role === "owner" ? "Owner" : group.role === "admin" ? "Admin" : "Member"}
                     </span>
                   </div>
                   <button
@@ -173,11 +171,11 @@ export default function GroupsPage() {
                       setTimeout(() => setCopiedCode(null), 2000)
                     }}
                     className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-surface-hover hover:text-gray-300"
-                    title="Copiar link de convite"
+                    title="Copy invite link"
                   >
                     <Copy className="h-4 w-4" />
                     {copiedCode === group.inviteCode && (
-                      <span className="absolute -mt-6 ml-4 text-xs text-green-400">Copiado!</span>
+                      <span className="absolute -mt-6 ml-4 text-xs text-green-400">Copied!</span>
                     )}
                   </button>
                 </div>

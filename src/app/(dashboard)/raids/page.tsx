@@ -1,11 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import useSWR from "swr"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Card, Badge, Button, Input, PageHeader } from "@/components/ui"
+import { useConfirm } from "@/hooks/useConfirm"
+import { useToast } from "@/hooks/useToast"
 import { Plus, Trash2, X } from "lucide-react"
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+import { http } from "@/lib/api"
 
 type RaidDifficulty = {
   id: string
@@ -20,9 +21,15 @@ type Raid = {
 }
 
 export default function RaidsPage() {
-  const { data: raids, mutate } = useSWR<Raid[]>("/api/raids", fetcher)
+  const queryClient = useQueryClient()
+  const { toast, promise } = useToast()
+  const { data: raids } = useQuery<Raid[]>({
+    queryKey: ["/api/raids"],
+    queryFn: () => http.get<Raid[]>("/api/raids"),
+  })
   const [name, setName] = useState("")
   const [difficulties, setDifficulties] = useState([{ difficulty: "", minIlvl: "" }])
+  const { confirm } = useConfirm()
 
   function addDifficultyRow() {
     setDifficulties([...difficulties, { difficulty: "", minIlvl: "" }])
@@ -38,27 +45,46 @@ export default function RaidsPage() {
     setDifficulties(difficulties.filter((_, idx) => idx !== i))
   }
 
+  const createMutation = useMutation({
+    mutationFn: (data: { name: string; difficulties: { difficulty: string; minIlvl: number }[] }) =>
+      http.post("/api/raids", data),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) =>
+      http.delete(`/api/raids?id=${id}`),
+  })
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
     const validDiffs = difficulties.filter((d) => d.difficulty.trim() && d.minIlvl)
-    await fetch("/api/raids", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    await promise(
+      createMutation.mutateAsync({
         name: name.trim(),
         difficulties: validDiffs.map((d) => ({ difficulty: d.difficulty.trim(), minIlvl: parseInt(d.minIlvl) })),
       }),
-    })
+      { loading: "Creating...", success: "Raid created!", error: (err: Error) => err.message },
+    )
     setName("")
     setDifficulties([{ difficulty: "", minIlvl: "" }])
-    mutate()
+    queryClient.invalidateQueries({ queryKey: ["/api/raids"] })
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this raid?")) return
-    await fetch(`/api/raids?id=${id}`, { method: "DELETE" })
-    mutate()
+    const ok = await confirm({
+      title: "Delete raid",
+      message: "Are you sure you want to delete this raid?",
+      confirmLabel: "Delete",
+      cancelLabel: "Cancel",
+      destructive: true,
+    })
+    if (!ok) return
+    await promise(
+      deleteMutation.mutateAsync(id),
+      { loading: "Deleting...", success: "Raid deleted", error: (err: Error) => err.message },
+    )
+    queryClient.invalidateQueries({ queryKey: ["/api/raids"] })
   }
 
   return (

@@ -11,14 +11,14 @@ export default async function DashboardLayout({
   if (!session?.user) redirect("/auth/signin")
 
   return (
-    <div className="flex min-h-screen bg-surface">
+    <div className="flex h-screen overflow-hidden bg-surface">
       <Sidebar
         signOutAction={async () => {
           "use server"
           await signOut()
         }}
       />
-      <main className="flex-1 p-8">{children}</main>
+      <main className="flex-1 overflow-y-auto p-8">{children}</main>
     </div>
   )
 }

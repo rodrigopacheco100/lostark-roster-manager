@@ -25,7 +25,7 @@ const navGroups = [
     label: "Social",
     links: [
       { href: "/friends", label: "Friends", icon: Users },
-      { href: "/groups", label: "Grupos", icon: Group },
+      { href: "/groups", label: "Groups", icon: Group },
       { href: "/profile", label: "Profile", icon: UserCircle },
     ],
   },

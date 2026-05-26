@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, Button, PageHeader } from "@/components/ui"
 import { Users, LogIn } from "lucide-react"
+import { http } from "@/lib/api"
 
 export default function JoinGroupPage() {
   const router = useRouter()
@@ -18,23 +19,22 @@ export default function JoinGroupPage() {
 
   useEffect(() => {
     if (!code) {
-      setError("Nenhum código de convite fornecido.")
+      setError("No invite code provided.")
       setLoading(false)
       return
     }
 
-    fetch(`/api/groups/join?code=${encodeURIComponent(code)}`)
-      .then((r) => r.json())
+    http.get<{ id: string; name: string; memberCount: number } | { error: string }>(`/api/groups/join?code=${encodeURIComponent(code)}`)
       .then((data) => {
-        if (data.error) {
+        if ("error" in data) {
           setError(data.error)
         } else {
           setGroup(data)
         }
         setLoading(false)
       })
-      .catch(() => {
-        setError("Erro ao buscar grupo.")
+      .catch((err) => {
+        setError(err.message || "Error looking up group.")
         setLoading(false)
       })
   }, [code])
@@ -44,25 +44,18 @@ export default function JoinGroupPage() {
     setJoining(true)
     setJoinError("")
 
-    const res = await fetch(`/api/groups/${group.id}/join`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ inviteCode: code }),
-    })
-
-    if (!res.ok) {
-      const data = await res.json()
-      setJoinError(data.error ?? "Erro ao entrar no grupo.")
+    try {
+      await http.post(`/api/groups/${group.id}/join`, { inviteCode: code })
+      router.push(`/groups/${group.id}`)
+    } catch (err) {
+      setJoinError(err instanceof Error ? err.message : "Error joining group.")
       setJoining(false)
-      return
     }
-
-    router.push(`/groups/${group.id}`)
   }
 
   return (
     <div>
-      <PageHeader title="Entrar no Grupo" />
+      <PageHeader title="Join Group" />
 
       <div className="mx-auto max-w-md">
         {loading && (
@@ -75,10 +68,10 @@ export default function JoinGroupPage() {
           <Card className="text-center">
             <div className="flex flex-col items-center gap-4 py-8">
               <Users className="h-12 w-12 text-gray-500" />
-              <h2 className="text-lg font-semibold text-gray-200">Grupo não encontrado</h2>
+              <h2 className="text-lg font-semibold text-gray-200">Group not found</h2>
               <p className="text-sm text-gray-400">{error}</p>
               <Button onClick={() => router.push("/groups")} variant="secondary">
-                Voltar para Grupos
+                Back to Groups
               </Button>
             </div>
           </Card>
@@ -90,7 +83,7 @@ export default function JoinGroupPage() {
               <Users className="h-12 w-12 text-blue-400" />
               <div className="text-center">
                 <h2 className="text-xl font-semibold text-gray-200">{group.name}</h2>
-                <p className="mt-1 text-sm text-gray-500">{group.memberCount} membro(s)</p>
+                <p className="mt-1 text-sm text-gray-500">{group.memberCount} member(s)</p>
               </div>
               {joinError && (
                 <p className="text-sm text-danger">{joinError}</p>
@@ -101,10 +94,10 @@ export default function JoinGroupPage() {
                   disabled={joining}
                   icon={<LogIn className="h-4 w-4" />}
                 >
-                  {joining ? "Entrando..." : "Entrar no Grupo"}
+                  {joining ? "Joining..." : "Join Group"}
                 </Button>
                 <Button onClick={() => router.push("/groups")} variant="ghost">
-                  Cancelar
+                  Cancel
                 </Button>
               </div>
             </div>

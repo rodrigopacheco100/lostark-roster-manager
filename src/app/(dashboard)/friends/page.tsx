@@ -1,11 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import useSWR from "swr"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Card, Button, Input, PageHeader, EmptyState, Modal } from "@/components/ui"
+import { useConfirm } from "@/hooks/useConfirm"
+import { useToast } from "@/hooks/useToast"
 import { Users, UserPlus, Check, X, UserMinus, UserRoundPlus, Copy } from "lucide-react"
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+import { http } from "@/lib/api"
 
 type User = {
   id: string
@@ -25,9 +26,21 @@ type FriendRequest = {
 }
 
 export default function FriendsPage() {
-  const { data: friends, mutate: mutateFriends } = useSWR<User[]>("/api/friends", fetcher)
-  const { data: requests, mutate: mutateRequests } = useSWR<FriendRequest[]>("/api/friends/requests", fetcher)
-  const { data: currentUser } = useSWR<User>("/api/user/me", fetcher)
+  const queryClient = useQueryClient()
+  const { data: friends } = useQuery<User[]>({
+    queryKey: ["/api/friends"],
+    queryFn: () => http.get<User[]>("/api/friends"),
+  })
+  const { data: requests } = useQuery<FriendRequest[]>({
+    queryKey: ["/api/friends/requests"],
+    queryFn: () => http.get<FriendRequest[]>("/api/friends/requests"),
+  })
+  const { data: currentUser } = useQuery<User>({
+    queryKey: ["/api/user/me"],
+    queryFn: () => http.get<User>("/api/user/me"),
+  })
+  const { confirm } = useConfirm()
+  const { toast, promise } = useToast()
 
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<User[]>([])
@@ -38,6 +51,21 @@ export default function FriendsPage() {
   const [addSuccess, setAddSuccess] = useState("")
   const [copied, setCopied] = useState(false)
 
+  const sendRequestMutation = useMutation({
+    mutationFn: (receiverId: string) =>
+      http.post("/api/friends/request", { receiverId }),
+  })
+
+  const respondMutation = useMutation({
+    mutationFn: ({ requestId, action }: { requestId: string; action: "accepted" | "declined" }) =>
+      http.put(`/api/friends/request/${requestId}`, { action }),
+  })
+
+  const removeFriendMutation = useMutation({
+    mutationFn: (friendId: string) =>
+      http.delete("/api/friends", { friendId }),
+  })
+
   async function handleSearch(q: string) {
     setSearchQuery(q)
     if (q.length < 2) {
@@ -45,28 +73,27 @@ export default function FriendsPage() {
       return
     }
     setSearching(true)
-    const res = await fetch(`/api/friends/search?q=${encodeURIComponent(q)}`)
-    const data = await res.json()
-    setSearchResults(data)
+    try {
+      const data = await http.get<User[]>(`/api/friends/search?q=${encodeURIComponent(q)}`)
+      setSearchResults(data)
+    } catch {
+      setSearchResults([])
+    }
     setSearching(false)
   }
 
   async function handleSendRequest(receiverId: string, onDone?: () => void) {
-    const res = await fetch("/api/friends/request", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ receiverId }),
-    })
-    if (!res.ok) {
-      const err = await res.json()
-      if (res.status === 409) {
-        if (!onDone) setAddError(err.error ?? "Request already pending or already friends")
-      }
-      return
-    }
+    await promise(
+      sendRequestMutation.mutateAsync(receiverId),
+      {
+        loading: "Sending request...",
+        success: "Friend request sent!",
+        error: (err: Error) => err.message,
+      },
+    )
     setSearchQuery("")
     setSearchResults([])
-    mutateRequests()
+    queryClient.invalidateQueries({ queryKey: ["/api/friends/requests"] })
     onDone?.()
   }
 
@@ -75,18 +102,15 @@ export default function FriendsPage() {
     setAddSuccess("")
     if (!friendCodeInput.trim()) return
 
-    const res = await fetch(`/api/friends/by-code?code=${encodeURIComponent(friendCodeInput.trim())}`)
-    if (!res.ok) {
-      const err = await res.json()
-      setAddError(err.error ?? "User not found")
-      return
+    try {
+      const user = await http.get<User>(`/api/friends/by-code?code=${encodeURIComponent(friendCodeInput.trim())}`)
+      handleSendRequest(user.id, () => {
+        setAddSuccess(`Friend request sent to ${user.name}!`)
+        setFriendCodeInput("")
+      })
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : "User not found")
     }
-
-    const user = await res.json()
-    handleSendRequest(user.id, () => {
-      setAddSuccess(`Friend request sent to ${user.name}!`)
-      setFriendCodeInput("")
-    })
   }
 
   async function handleCopyCode() {
@@ -98,23 +122,31 @@ export default function FriendsPage() {
   }
 
   async function handleRespond(requestId: string, action: "accepted" | "declined") {
-    await fetch(`/api/friends/request/${requestId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
-    })
-    mutateRequests()
-    mutateFriends()
+    await promise(
+      respondMutation.mutateAsync({ requestId, action }),
+      { loading: action === "accepted" ? "Accepting..." : "Declining...", success: action === "accepted" ? "Request accepted!" : "Request declined", error: (err: Error) => err.message },
+    )
+    queryClient.invalidateQueries({ queryKey: ["/api/friends/requests"] })
+    queryClient.invalidateQueries({ queryKey: ["/api/friends"] })
   }
 
   async function handleRemoveFriend(friendId: string) {
-    if (!confirm("Remove this friend?")) return
-    await fetch("/api/friends", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ friendId }),
+    const ok = await confirm({
+      title: "Remove friend",
+      message: "Are you sure you want to remove this friend?",
+      confirmLabel: "Remove",
+      cancelLabel: "Cancel",
     })
-    mutateFriends()
+    if (!ok) return
+    await promise(
+      removeFriendMutation.mutateAsync(friendId),
+      {
+        loading: "Removing...",
+        success: "Friend removed",
+        error: "Failed to remove friend",
+      },
+    )
+    queryClient.invalidateQueries({ queryKey: ["/api/friends"] })
   }
 
   const pendingRequests = requests?.filter((r) => r.status === "pending") ?? []

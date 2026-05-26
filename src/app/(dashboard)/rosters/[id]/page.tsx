@@ -1,14 +1,15 @@
 "use client"
 
-import { useState } from "react"
-import useSWR from "swr"
-import { useParams } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { LostArkClass } from "@/db/schema"
 import { Card, Badge, Button, Input, Select, PageHeader } from "@/components/ui"
+import { useConfirm } from "@/hooks/useConfirm"
+import { useToast } from "@/hooks/useToast"
 import { ArrowLeft, Plus, Pencil, Trash2, X, Check } from "lucide-react"
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+import { http } from "@/lib/api"
 
 type RaidDifficulty = {
   id: string
@@ -46,8 +47,26 @@ const classOptions = Object.values(LostArkClass).map((c) => ({ value: c, label: 
 export default function RosterDetailPage() {
   const params = useParams()
   const rosterId = params.id as string
-  const { data: roster, mutate } = useSWR<Roster>(`/api/rosters/${rosterId}`, fetcher)
-  const { data: allRaids } = useSWR<Raid[]>("/api/raids", fetcher)
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const { data: roster, isError, error } = useQuery<Roster>({
+    queryKey: [`/api/rosters/${rosterId}`],
+    queryFn: () => http.get<Roster>(`/api/rosters/${rosterId}`),
+    retry: false,
+  })
+  const { data: allRaids } = useQuery<Raid[]>({
+    queryKey: ["/api/raids"],
+    queryFn: () => http.get<Raid[]>("/api/raids"),
+  })
+  const { confirm } = useConfirm()
+  const { toast, promise } = useToast()
+
+  useEffect(() => {
+    if (isError) {
+      toast(error instanceof Error ? error.message : "Error loading roster", "error")
+      router.push("/rosters")
+    }
+  }, [isError])
 
   const [newName, setNewName] = useState("")
   const [newClass, setNewClass] = useState<LostArkClass>(LostArkClass.Berserker)
@@ -60,51 +79,86 @@ export default function RosterDetailPage() {
   const [assignCharId, setAssignCharId] = useState<string | null>(null)
   const [assignRaidDifficultyId, setAssignRaidDifficultyId] = useState("")
 
+  const addCharacterMutation = useMutation({
+    mutationFn: (data: { name: string; class: LostArkClass; itemLevel: number }) =>
+      http.post(`/api/rosters/${rosterId}/characters`, data),
+  })
+
+  const updateCharacterMutation = useMutation({
+    mutationFn: ({ id, name, class: charClass, itemLevel }: { id: string; name: string; class: string; itemLevel: number }) =>
+      http.put(`/api/characters/${id}`, { name, class: charClass, itemLevel }),
+  })
+
+  const deleteCharacterMutation = useMutation({
+    mutationFn: (id: string) =>
+      http.delete(`/api/characters/${id}`),
+  })
+
+  const assignRaidMutation = useMutation({
+    mutationFn: ({ characterId, raidDifficultyId }: { characterId: string; raidDifficultyId: string }) =>
+      http.post(`/api/characters/${characterId}/raids`, { raidDifficultyId }),
+  })
+
+  const removeRaidMutation = useMutation({
+    mutationFn: ({ characterId, characterRaidId }: { characterId: string; characterRaidId: string }) =>
+      http.delete(`/api/characters/${characterId}/raids?characterRaidId=${characterRaidId}`),
+  })
+
   async function handleAddCharacter(e: React.FormEvent) {
     e.preventDefault()
     if (!newName.trim() || !newItemLevel) return
-    await fetch(`/api/rosters/${rosterId}/characters`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newName, class: newClass, itemLevel: parseInt(newItemLevel) }),
-    })
+    await promise(
+      addCharacterMutation.mutateAsync({ name: newName, class: newClass, itemLevel: parseInt(newItemLevel) }),
+      { loading: "Adding...", success: "Character added!", error: (err: Error) => err.message },
+    )
     setNewName("")
     setNewItemLevel("")
-    mutate()
+    queryClient.invalidateQueries({ queryKey: [`/api/rosters/${rosterId}`] })
   }
 
   async function handleUpdateCharacter(id: string) {
     if (!editName.trim() || !editItemLevel) return
-    await fetch(`/api/characters/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editName, class: editClass, itemLevel: parseInt(editItemLevel) }),
-    })
+    await promise(
+      updateCharacterMutation.mutateAsync({ id, name: editName, class: editClass, itemLevel: parseInt(editItemLevel) }),
+      { loading: "Updating...", success: "Character updated!", error: (err: Error) => err.message },
+    )
     setEditingChar(null)
-    mutate()
+    queryClient.invalidateQueries({ queryKey: [`/api/rosters/${rosterId}`] })
   }
 
   async function handleDeleteCharacter(id: string) {
-    if (!confirm("Delete this character?")) return
-    await fetch(`/api/characters/${id}`, { method: "DELETE" })
-    mutate()
+    const ok = await confirm({
+      title: "Delete character",
+      message: "Are you sure you want to delete this character?",
+      confirmLabel: "Delete",
+      cancelLabel: "Cancel",
+      destructive: true,
+    })
+    if (!ok) return
+    await promise(
+      deleteCharacterMutation.mutateAsync(id),
+      { loading: "Deleting...", success: "Character deleted", error: (err: Error) => err.message },
+    )
+    queryClient.invalidateQueries({ queryKey: [`/api/rosters/${rosterId}`] })
   }
 
   async function handleAssignRaid(characterId: string) {
     if (!assignRaidDifficultyId) return
-    await fetch(`/api/characters/${characterId}/raids`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ raidDifficultyId: assignRaidDifficultyId }),
-    })
+    await promise(
+      assignRaidMutation.mutateAsync({ characterId, raidDifficultyId: assignRaidDifficultyId }),
+      { loading: "Assigning...", success: "Raid assigned!", error: (err: Error) => err.message },
+    )
     setAssignCharId(null)
     setAssignRaidDifficultyId("")
-    mutate()
+    queryClient.invalidateQueries({ queryKey: [`/api/rosters/${rosterId}`] })
   }
 
   async function handleRemoveRaid(characterId: string, characterRaidId: string) {
-    await fetch(`/api/characters/${characterId}/raids?characterRaidId=${characterRaidId}`, { method: "DELETE" })
-    mutate()
+    await promise(
+      removeRaidMutation.mutateAsync({ characterId, characterRaidId }),
+      { loading: "Removing...", success: "Raid removed!", error: (err: Error) => err.message },
+    )
+    queryClient.invalidateQueries({ queryKey: [`/api/rosters/${rosterId}`] })
   }
 
   function availableDifficulties(character: Character) {

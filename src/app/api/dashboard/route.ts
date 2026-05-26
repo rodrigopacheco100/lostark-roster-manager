@@ -93,7 +93,7 @@ export async function GET() {
   }
 
   const allRosters = [
-    { owner: { id: session.user.id, name: "Meus Rosters", isMe: true, groups: [] as string[] }, rosters: formatRosters(myRosters) },
+    { owner: { id: session.user.id, name: "My Rosters", isMe: true, groups: [] as string[] }, rosters: formatRosters(myRosters) },
     ...friendRosters
       .filter((fr) => fr.rosters.length > 0)
       .map((fr) => ({

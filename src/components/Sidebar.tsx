@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation"
 import {
   LayoutDashboard,
   Sword,
-  Swords,
   Users,
   UserCircle,
   LogOut,
@@ -18,7 +17,6 @@ const navGroups = [
     links: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/rosters", label: "Rosters", icon: Sword },
-      { href: "/raids", label: "Raids", icon: Swords },
     ],
   },
   {
@@ -55,11 +53,10 @@ export function Sidebar({ signOutAction }: { signOutAction: () => Promise<void> 
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 ${
-                    isActive
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 ${isActive
                       ? "bg-surface-active text-blue-400"
                       : "text-gray-400 hover:bg-surface-hover hover:text-gray-200"
-                  }`}
+                    }`}
                 >
                   <link.icon className="h-4 w-4 shrink-0" />
                   {link.label}

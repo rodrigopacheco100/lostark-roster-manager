@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
+import { withAuth } from "next-auth/middleware"
 import { checkRateLimit } from "@/lib/rate-limit"
 
-export default auth((req) => {
+export default withAuth(function middleware(req) {
   if (req.nextUrl.pathname.startsWith("/api/")) {
-    const userId = req.auth?.user?.id ?? null
+    const userId = req.nextauth.token?.sub ?? null
     const result = checkRateLimit(userId)
     if (!result.allowed) {
       return NextResponse.json(
@@ -15,11 +15,6 @@ export default auth((req) => {
         },
       )
     }
-  }
-
-  if (!req.auth && !req.nextUrl.pathname.startsWith("/auth")) {
-    const signInUrl = new URL("/auth/signin", req.nextUrl.origin)
-    return NextResponse.redirect(signInUrl)
   }
 })
 

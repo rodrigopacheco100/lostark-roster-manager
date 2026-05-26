@@ -1,5 +1,6 @@
 "use client"
 
+import { signOut } from "next-auth/react"
 import { Coffee, ExternalLink, Group, LayoutDashboard, LogOut, Sword, UserCircle, Users } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -22,7 +23,7 @@ const navGroups = [
   },
 ]
 
-export function Sidebar({ signOutAction }: { signOutAction: () => Promise<void> }) {
+export function Sidebar() {
   const pathname = usePathname()
 
   return (
@@ -70,15 +71,14 @@ export function Sidebar({ signOutAction }: { signOutAction: () => Promise<void> 
       </div>
 
       <div className="pt-3">
-        <form action={signOutAction}>
-          <button
-            type="submit"
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 transition-colors duration-200 hover:bg-surface-hover hover:text-red-400"
-          >
-            <LogOut className="h-4 w-4 shrink-0" />
-            Sign out
-          </button>
-        </form>
+        <button
+          type="button"
+          onClick={() => signOut({ callbackUrl: "/auth/signin" })}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 transition-colors duration-200 hover:bg-surface-hover hover:text-red-400"
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          Sign out
+        </button>
       </div>
     </nav>
   )

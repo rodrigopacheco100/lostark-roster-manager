@@ -2,13 +2,14 @@ import { timingSafeEqual } from "node:crypto"
 import { NextResponse } from "next/server"
 import { db } from "@/db"
 import { characterRaids } from "@/db/schema"
+import { env } from "@/lib/env"
 
 function validateApiKey(req: Request): boolean {
   const apiKey = req.headers.get("x-api-key")
-  if (!apiKey || !process.env.RESET_API_KEY) return false
+  if (!apiKey) return false
 
   const keyBuffer = Buffer.from(apiKey)
-  const storedBuffer = Buffer.from(process.env.RESET_API_KEY)
+  const storedBuffer = Buffer.from(env.RESET_API_KEY)
 
   if (keyBuffer.length !== storedBuffer.length) return false
 

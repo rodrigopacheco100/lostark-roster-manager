@@ -1,18 +1,23 @@
 import { eq } from "drizzle-orm"
 import NextAuth from "next-auth"
+import { getServerSession } from "next-auth"
+import type { AuthOptions } from "next-auth"
 import Discord from "next-auth/providers/discord"
 import Google from "next-auth/providers/google"
 import { db } from "@/db"
 import { users } from "@/db/schema"
+import { env } from "@/lib/env"
 
 const providerField = {
   google: "googleId" as const,
   discord: "discordId" as const,
 }
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const authOptions: AuthOptions = {
   providers: [
     Google({
+      clientId: env.AUTH_GOOGLE_ID,
+      clientSecret: env.AUTH_GOOGLE_SECRET,
       profile(profile) {
         return {
           id: profile.sub,
@@ -23,6 +28,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
     Discord({
+      clientId: env.AUTH_DISCORD_ID,
+      clientSecret: env.AUTH_DISCORD_SECRET,
       profile(profile) {
         return {
           id: profile.id,
@@ -86,4 +93,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session
     },
   },
-})
+}
+
+const handler = NextAuth(authOptions)
+
+export const handlers = { GET: handler, POST: handler }
+
+export async function auth() {
+  return await getServerSession(authOptions)
+}

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 import { Sidebar } from "@/components/Sidebar"
-import { auth, signOut } from "@/lib/auth"
+import { auth } from "@/lib/auth"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -8,12 +8,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface">
-      <Sidebar
-        signOutAction={async () => {
-          "use server"
-          await signOut()
-        }}
-      />
+      <Sidebar />
       <main className="flex-1 overflow-y-auto p-8">{children}</main>
     </div>
   )

@@ -1,7 +1,7 @@
 import "dotenv/config"
-import { db } from "./index"
-import { raids, raidDifficulties } from "./schema"
 import { eq } from "drizzle-orm"
+import { db } from "./index"
+import { raidDifficulties, raids } from "./schema"
 
 type RaidDataItem = {
   name: string
@@ -53,8 +53,8 @@ const raidData: RaidDataItem[] = [
       { difficulty: "Normal", minIlvl: 1710 },
       { difficulty: "Hard", minIlvl: 1730 },
       { difficulty: "Nightmare", minIlvl: 1740 },
-    ]
-  }
+    ],
+  },
 ]
 
 async function main() {
@@ -70,10 +70,7 @@ async function main() {
       continue
     }
 
-    const [inserted] = await db
-      .insert(raids)
-      .values({ name: raid.name })
-      .returning()
+    const [inserted] = await db.insert(raids).values({ name: raid.name }).returning()
 
     if (inserted) {
       await db.insert(raidDifficulties).values(

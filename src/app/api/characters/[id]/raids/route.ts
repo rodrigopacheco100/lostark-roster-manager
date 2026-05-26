@@ -1,27 +1,35 @@
-import { auth } from "@/lib/auth"
-import { getCharacterRaids, assignRaidToCharacter, removeCharacterRaid, toggleRaidCompletion, getCharacterWithRoster } from "@/lib/queries"
-import { db } from "@/db"
-import { raidDifficulties } from "@/db/schema"
 import { eq } from "drizzle-orm"
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { db } from "@/db"
+import { raidDifficulties } from "@/db/schema"
+import { auth } from "@/lib/auth"
+import {
+  assignRaidToCharacter,
+  getCharacterRaids,
+  getCharacterWithRoster,
+  removeCharacterRaid,
+  toggleRaidCompletion,
+} from "@/lib/queries"
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const data = await getCharacterRaids(params.id)
+  const data = await getCharacterRaids(id)
   return NextResponse.json(data)
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { raidDifficultyId } = await req.json()
   if (!raidDifficultyId) return NextResponse.json({ error: "raidDifficultyId required" }, { status: 400 })
 
-  const existing = await getCharacterRaids(params.id)
+  const existing = await getCharacterRaids(id)
   if (existing.length >= 3) {
     return NextResponse.json({ error: "Character can have at most 3 raids" }, { status: 400 })
   }
@@ -37,11 +45,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: "Character already has this raid assigned" }, { status: 400 })
   }
 
-  const [result] = await assignRaidToCharacter(params.id, raidDifficultyId)
+  const [result] = await assignRaidToCharacter(id, raidDifficultyId)
   return NextResponse.json(result, { status: 201 })
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  await params
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
@@ -58,7 +67,8 @@ const toggleSchema = z.object({
   completed: z.boolean(),
 })
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
@@ -72,14 +82,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const { raidDifficultyId, completed } = parsed.data
 
-  const character = await getCharacterWithRoster(params.id)
+  const character = await getCharacterWithRoster(id)
   if (!character) return NextResponse.json({ error: "Character not found" }, { status: 404 })
 
   if (character.roster.userId !== session.user.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const [result] = await toggleRaidCompletion(params.id, raidDifficultyId, completed)
+  const [result] = await toggleRaidCompletion(id, raidDifficultyId, completed)
   if (!result) return NextResponse.json({ error: "Raid assignment not found" }, { status: 404 })
 
   return NextResponse.json(result)

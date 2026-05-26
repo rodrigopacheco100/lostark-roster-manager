@@ -1,7 +1,7 @@
-import { auth } from "@/lib/auth"
-import { getRosters, createRoster } from "@/lib/queries"
-import { createRosterSchema } from "@/lib/validations"
 import { NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
+import { createRoster, getRosters } from "@/lib/queries"
+import { createRosterSchema } from "@/lib/validations"
 
 export async function GET() {
   const session = await auth()

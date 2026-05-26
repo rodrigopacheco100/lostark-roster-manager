@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Copy, Plus, UserPlus, Users } from "lucide-react"
 import Link from "next/link"
-import { Card, Button, Input, PageHeader, EmptyState, Modal } from "@/components/ui"
+import { useState } from "react"
+import { Button, Card, EmptyState, Input, Modal, PageHeader } from "@/components/ui"
 import { useToast } from "@/hooks/useToast"
-import { Users, UserPlus, Plus, Copy } from "lucide-react"
-import { http } from "@/lib/api"
+import { httpClient } from "@/lib/api"
 
 type Group = {
   id: string
@@ -18,10 +18,10 @@ type Group = {
 
 export default function GroupsPage() {
   const queryClient = useQueryClient()
-  const { toast, promise } = useToast()
+  const { promise } = useToast()
   const { data: groups } = useQuery<Group[]>({
     queryKey: ["/api/groups"],
-    queryFn: () => http.get<Group[]>("/api/groups"),
+    queryFn: () => httpClient.get<Group[]>("/api/groups"),
   })
 
   const [createModalOpen, setCreateModalOpen] = useState(false)
@@ -35,21 +35,21 @@ export default function GroupsPage() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
 
   const createMutation = useMutation({
-    mutationFn: (name: string) =>
-      http.post<Group>("/api/groups", { name }),
+    mutationFn: (name: string) => httpClient.post<Group>("/api/groups", { name }),
   })
 
   const joinMutation = useMutation({
     mutationFn: ({ groupId, inviteCode }: { groupId: string; inviteCode: string }) =>
-      http.post(`/api/groups/${groupId}/join`, { inviteCode }),
+      httpClient.post(`/api/groups/${groupId}/join`, { inviteCode }),
   })
 
   async function handleCreate() {
     if (!createName.trim()) return
-    await promise(
-      createMutation.mutateAsync(createName.trim()),
-      { loading: "Creating group...", success: "Group created!", error: (err: Error) => err.message },
-    )
+    await promise(createMutation.mutateAsync(createName.trim()), {
+      loading: "Creating group...",
+      success: "Group created!",
+      error: (err: Error) => err.message,
+    })
     setCreateName("")
     setCreateModalOpen(false)
     queryClient.invalidateQueries({ queryKey: ["/api/groups"] })
@@ -63,7 +63,9 @@ export default function GroupsPage() {
       return
     }
     try {
-      const data = await http.get<{ id: string; name: string; memberCount: number }>(`/api/groups/join?code=${encodeURIComponent(inviteCodeInput.trim())}`)
+      const data = await httpClient.get<{ id: string; name: string; memberCount: number }>(
+        `/api/groups/join?code=${encodeURIComponent(inviteCodeInput.trim())}`,
+      )
       setJoinPreview(data)
     } catch (err) {
       setJoinError(err instanceof Error ? err.message : "Invalid invite code")
@@ -72,17 +74,18 @@ export default function GroupsPage() {
 
   async function handleJoin() {
     if (!joinPreview) return
-    await promise(
-      joinMutation.mutateAsync({ groupId: joinPreview.id, inviteCode: inviteCodeInput.trim() }),
-      { loading: "Joining...", success: `You joined ${joinPreview.name}!`, error: (err: Error) => err.message },
-    )
+    await promise(joinMutation.mutateAsync({ groupId: joinPreview.id, inviteCode: inviteCodeInput.trim() }), {
+      loading: "Joining...",
+      success: `You joined ${joinPreview.name}!`,
+      error: (err: Error) => err.message,
+    })
     setInviteCodeInput("")
     setJoinPreview(null)
     setJoinModalOpen(false)
     queryClient.invalidateQueries({ queryKey: ["/api/groups"] })
   }
 
-  async function handleCopyCode(code: string) {
+  async function _handleCopyCode(code: string) {
     await navigator.clipboard.writeText(code)
     setCopiedCode(code)
     setTimeout(() => setCopiedCode(null), 2000)
@@ -104,26 +107,37 @@ export default function GroupsPage() {
         }
       />
 
-      <Modal isOpen={createModalOpen} onClose={() => { setCreateModalOpen(false); setCreateName("") }} title="Create Group">
+      <Modal
+        isOpen={createModalOpen}
+        onClose={() => {
+          setCreateModalOpen(false)
+          setCreateName("")
+        }}
+        title="Create Group"
+      >
         <div className="space-y-4">
-          <Input
-            value={createName}
-            onChange={(e) => setCreateName(e.target.value)}
-            placeholder="Group name..."
-          />
+          <Input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="Group name..." />
           <Button onClick={handleCreate} className="w-full">
             Create
           </Button>
         </div>
       </Modal>
 
-      <Modal isOpen={joinModalOpen} onClose={() => { setJoinModalOpen(false); setInviteCodeInput(""); setJoinPreview(null); setJoinError("") }} title="Join Group">
+      <Modal
+        isOpen={joinModalOpen}
+        onClose={() => {
+          setJoinModalOpen(false)
+          setInviteCodeInput("")
+          setJoinPreview(null)
+          setJoinError("")
+        }}
+        title="Join Group"
+      >
         <div className="space-y-4">
           <Input
             value={inviteCodeInput}
             onChange={(e) => setInviteCodeInput(e.target.value)}
             placeholder="Invite code..."
-
           />
           {!joinPreview && (
             <Button onClick={handleResolveCode} className="w-full" variant="secondary">
@@ -163,6 +177,7 @@ export default function GroupsPage() {
                     </span>
                   </div>
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.preventDefault()
                       const link = `${window.location.origin}/groups/join?code=${group.inviteCode}`

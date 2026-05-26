@@ -1,11 +1,12 @@
-import { auth } from "@/lib/auth"
-import { respondToRequest, createFriendship } from "@/lib/queries"
-import { db } from "@/db"
-import { friendRequests, FriendRequestStatus } from "@/db/schema"
 import { eq } from "drizzle-orm"
 import { NextResponse } from "next/server"
+import { db } from "@/db"
+import { FriendRequestStatus, friendRequests } from "@/db/schema"
+import { auth } from "@/lib/auth"
+import { createFriendship, respondToRequest } from "@/lib/queries"
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
@@ -16,7 +17,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
   if (action === FriendRequestStatus.Accepted) {
     const request = await db.query.friendRequests.findFirst({
-      where: eq(friendRequests.id, params.id),
+      where: eq(friendRequests.id, id),
     })
     if (!request || request.receiverId !== session.user.id) {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -25,6 +26,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     await createFriendship(request.receiverId, request.senderId)
   }
 
-  const [updated] = await respondToRequest(params.id, action)
+  const [updated] = await respondToRequest(id, action)
   return NextResponse.json(updated)
 }

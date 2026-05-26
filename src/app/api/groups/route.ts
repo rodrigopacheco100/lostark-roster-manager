@@ -1,7 +1,7 @@
-import { auth } from "@/lib/auth"
-import { getUserGroups, createGroup } from "@/lib/queries"
-import { createGroupSchema } from "@/lib/validations"
 import { NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
+import { createGroup, getUserGroups } from "@/lib/queries"
+import { createGroupSchema } from "@/lib/validations"
 
 export async function GET() {
   const session = await auth()

@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { LogIn, Users } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Card, Button, PageHeader } from "@/components/ui"
-import { Users, LogIn } from "lucide-react"
-import { http } from "@/lib/api"
+import { useEffect, useState } from "react"
+import { Button, Card, PageHeader } from "@/components/ui"
+import { httpClient } from "@/lib/api"
 
 export default function JoinGroupPage() {
   const router = useRouter()
@@ -24,7 +24,10 @@ export default function JoinGroupPage() {
       return
     }
 
-    http.get<{ id: string; name: string; memberCount: number } | { error: string }>(`/api/groups/join?code=${encodeURIComponent(code)}`)
+    httpClient
+      .get<{ id: string; name: string; memberCount: number } | { error: string }>(
+        `/api/groups/join?code=${encodeURIComponent(code)}`,
+      )
       .then((data) => {
         if ("error" in data) {
           setError(data.error)
@@ -45,7 +48,7 @@ export default function JoinGroupPage() {
     setJoinError("")
 
     try {
-      await http.post(`/api/groups/${group.id}/join`, { inviteCode: code })
+      await httpClient.post(`/api/groups/${group.id}/join`, { inviteCode: code })
       router.push(`/groups/${group.id}`)
     } catch (err) {
       setJoinError(err instanceof Error ? err.message : "Error joining group.")
@@ -85,15 +88,9 @@ export default function JoinGroupPage() {
                 <h2 className="text-xl font-semibold text-gray-200">{group.name}</h2>
                 <p className="mt-1 text-sm text-gray-500">{group.memberCount} member(s)</p>
               </div>
-              {joinError && (
-                <p className="text-sm text-danger">{joinError}</p>
-              )}
+              {joinError && <p className="text-sm text-danger">{joinError}</p>}
               <div className="flex gap-3">
-                <Button
-                  onClick={handleJoin}
-                  disabled={joining}
-                  icon={<LogIn className="h-4 w-4" />}
-                >
+                <Button onClick={handleJoin} disabled={joining} icon={<LogIn className="h-4 w-4" />}>
                   {joining ? "Joining..." : "Join Group"}
                 </Button>
                 <Button onClick={() => router.push("/groups")} variant="ghost">

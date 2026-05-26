@@ -1,13 +1,26 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  ArrowLeft,
+  ArrowLeftRight,
+  Ban,
+  Copy,
+  Crown,
+  LogOut,
+  Shield,
+  Trash2,
+  User,
+  UserCheck,
+  UserMinus,
+} from "lucide-react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Card, Button, Badge } from "@/components/ui"
+import { useEffect, useState } from "react"
+import { Badge, Button, Card } from "@/components/ui"
 import { useConfirm } from "@/hooks/useConfirm"
 import { useToast } from "@/hooks/useToast"
-import { Copy, LogOut, Trash2, Crown, Shield, User, UserMinus, Ban, UserCheck, ArrowLeftRight, ArrowLeft } from "lucide-react"
-import { http } from "@/lib/api"
+import { httpClient } from "@/lib/api"
 
 type Member = {
   id: string
@@ -29,14 +42,18 @@ type GroupDetail = {
 export default function GroupDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { data: group, isError: groupFetchFailed, error } = useQuery<GroupDetail>({
+  const {
+    data: group,
+    isError: groupFetchFailed,
+    error,
+  } = useQuery<GroupDetail>({
     queryKey: [`/api/groups/${params.id}`],
-    queryFn: () => http.get<GroupDetail>(`/api/groups/${params.id}`),
+    queryFn: () => httpClient.get<GroupDetail>(`/api/groups/${params.id}`),
     retry: false,
   })
   const { data: currentUser } = useQuery<{ id: string }>({
     queryKey: ["/api/user/me"],
-    queryFn: () => http.get<{ id: string }>("/api/user/me"),
+    queryFn: () => httpClient.get<{ id: string }>("/api/user/me"),
   })
   const { confirm } = useConfirm()
   const { toast, promise } = useToast()
@@ -46,7 +63,7 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
       toast(error instanceof Error ? error.message : "Error loading group", "error")
       router.push("/groups")
     }
-  }, [groupFetchFailed])
+  }, [groupFetchFailed, toast, router.push, error?.message, error])
 
   const [copied, setCopied] = useState(false)
 
@@ -56,9 +73,9 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
 
   const groupMutation = useMutation({
     mutationFn: ({ url, method, body }: { url: string; method: string; body?: object }) => {
-      if (method === "PUT") return http.put(url, body)
-      if (method === "DELETE") return http.delete(url)
-      return http.post(url, body)
+      if (method === "PUT") return httpClient.put(url, body)
+      if (method === "DELETE") return httpClient.delete(url)
+      return httpClient.post(url, body)
     },
   })
 
@@ -78,10 +95,11 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
       cancelLabel: "Cancel",
     })
     if (!ok) return
-    await promise(
-      groupMutation.mutateAsync({ url: `/api/groups/${params.id}/leave`, method: "POST" }),
-      { loading: "Please wait...", success: "You left the group", error: (err: Error) => err.message },
-    )
+    await promise(groupMutation.mutateAsync({ url: `/api/groups/${params.id}/leave`, method: "POST" }), {
+      loading: "Please wait...",
+      success: "You left the group",
+      error: (err: Error) => err.message,
+    })
     queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
     router.push("/groups")
   }
@@ -101,10 +119,11 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
       destructive: true,
     })
     if (!ok) return
-    await promise(
-      groupMutation.mutateAsync({ url: `/api/groups/${params.id}`, method: "DELETE" }),
-      { loading: "Please wait...", success: `Group ${group.name} deleted`, error: (err: Error) => err.message },
-    )
+    await promise(groupMutation.mutateAsync({ url: `/api/groups/${params.id}`, method: "DELETE" }), {
+      loading: "Please wait...",
+      success: `Group ${group.name} deleted`,
+      error: (err: Error) => err.message,
+    })
     queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
     router.push("/groups")
   }
@@ -120,7 +139,11 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
     if (!ok) return
     await promise(
       groupMutation.mutateAsync({ url: `/api/groups/${params.id}/transfer`, method: "POST", body: { targetUserId } }),
-      { loading: "Please wait...", success: `Ownership transferred to ${targetName}`, error: (err: Error) => err.message },
+      {
+        loading: "Please wait...",
+        success: `Ownership transferred to ${targetName}`,
+        error: (err: Error) => err.message,
+      },
     )
     queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
   }
@@ -128,8 +151,16 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
   async function handleChangeRole(targetUserId: string, role: string) {
     const targetName = group?.members.find((m) => m.id === targetUserId)?.name
     await promise(
-      groupMutation.mutateAsync({ url: `/api/groups/${params.id}/members/${targetUserId}/role`, method: "PUT", body: { role } }),
-      { loading: "Please wait...", success: role === "admin" ? `${targetName} promoted to admin` : `${targetName} demoted to member`, error: (err: Error) => err.message },
+      groupMutation.mutateAsync({
+        url: `/api/groups/${params.id}/members/${targetUserId}/role`,
+        method: "PUT",
+        body: { role },
+      }),
+      {
+        loading: "Please wait...",
+        success: role === "admin" ? `${targetName} promoted to admin` : `${targetName} demoted to member`,
+        error: (err: Error) => err.message,
+      },
     )
     queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
   }
@@ -144,7 +175,11 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
     })
     if (!ok) return
     await promise(
-      groupMutation.mutateAsync({ url: `/api/groups/${params.id}/kick`, method: "POST", body: { userId: targetUserId } }),
+      groupMutation.mutateAsync({
+        url: `/api/groups/${params.id}/kick`,
+        method: "POST",
+        body: { userId: targetUserId },
+      }),
       { loading: "Please wait...", success: `${targetName} removed from group`, error: (err: Error) => err.message },
     )
     queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
@@ -161,7 +196,11 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
     })
     if (!ok) return
     await promise(
-      groupMutation.mutateAsync({ url: `/api/groups/${params.id}/ban`, method: "POST", body: { userId: targetUserId } }),
+      groupMutation.mutateAsync({
+        url: `/api/groups/${params.id}/ban`,
+        method: "POST",
+        body: { userId: targetUserId },
+      }),
       { loading: "Please wait...", success: `${targetName} banned`, error: (err: Error) => err.message },
     )
     queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
@@ -169,7 +208,11 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
 
   async function handleUnban(targetUserId: string) {
     await promise(
-      groupMutation.mutateAsync({ url: `/api/groups/${params.id}/unban`, method: "POST", body: { userId: targetUserId } }),
+      groupMutation.mutateAsync({
+        url: `/api/groups/${params.id}/unban`,
+        method: "POST",
+        body: { userId: targetUserId },
+      }),
       { loading: "Please wait...", success: "Ban removed", error: (err: Error) => err.message },
     )
     queryClient.invalidateQueries({ queryKey: [`/api/groups/${params.id}`] })
@@ -186,7 +229,11 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
   return (
     <div>
       <div className="mb-8 flex items-center gap-3">
-        <button onClick={() => router.push("/groups")} className="rounded-lg p-2 text-gray-400 hover:bg-surface-hover hover:text-gray-200">
+        <button
+          type="button"
+          onClick={() => router.push("/groups")}
+          className="rounded-lg p-2 text-gray-400 hover:bg-surface-hover hover:text-gray-200"
+        >
           <ArrowLeft className="h-5 w-5" />
         </button>
         <h1 className="flex-1 text-2xl font-bold text-gray-100">{group.name}</h1>
@@ -208,7 +255,9 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
         <p className="mb-2 text-sm font-medium text-gray-400">Invite Link</p>
         <div className="flex items-center gap-2 rounded-lg bg-surface-hover px-4 py-3">
           <code className="flex-1 truncate font-mono text-sm text-blue-400">
-            {typeof window !== "undefined" ? `${window.location.origin}/groups/join?code=${group.inviteCode}` : group.inviteCode}
+            {typeof window !== "undefined"
+              ? `${window.location.origin}/groups/join?code=${group.inviteCode}`
+              : group.inviteCode}
           </code>
           <Button variant="ghost" size="sm" onClick={handleCopyCode} icon={<Copy className="h-4 w-4" />}>
             {copied ? "Copied!" : "Copy"}
@@ -227,25 +276,29 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
               <Card key={member.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   {member.image && (
-                    <img src={member.image} alt="" className="h-8 w-8 rounded-full" />
+                    <Image
+                      src={member.image}
+                      alt=""
+                      width={32}
+                      height={32}
+                      className="h-8 w-8 rounded-full"
+                      unoptimized
+                    />
                   )}
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-gray-200">
                         {member.name}
-                        {member.id === currentUser?.id && (
-                          <span className="ml-1 text-sm text-gray-500">(you)</span>
-                        )}
+                        {member.id === currentUser?.id && <span className="ml-1 text-sm text-gray-500">(you)</span>}
                       </p>
-                      <Badge
-                        color={
-                          member.role === "owner" ? "yellow" :
-                            member.role === "admin" ? "blue" : "gray"
-                        }
-                      >
-                        {member.role === "owner" ? <Crown className="mr-1 h-3 w-3 inline" /> :
-                          member.role === "admin" ? <Shield className="mr-1 h-3 w-3 inline" /> :
-                            <User className="mr-1 h-3 w-3 inline" />}
+                      <Badge color={member.role === "owner" ? "yellow" : member.role === "admin" ? "blue" : "gray"}>
+                        {member.role === "owner" ? (
+                          <Crown className="mr-1 h-3 w-3 inline" />
+                        ) : member.role === "admin" ? (
+                          <Shield className="mr-1 h-3 w-3 inline" />
+                        ) : (
+                          <User className="mr-1 h-3 w-3 inline" />
+                        )}
                         {member.role === "owner" ? "Owner" : member.role === "admin" ? "Admin" : "Member"}
                       </Badge>
                     </div>
@@ -310,7 +363,9 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
             {group.bans.map((ban) => (
               <Card key={ban.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  {ban.image && <img src={ban.image} alt="" className="h-8 w-8 rounded-full" />}
+                  {ban.image && (
+                    <Image src={ban.image} alt="" width={32} height={32} className="h-8 w-8 rounded-full" unoptimized />
+                  )}
                   <p className="font-medium text-gray-400">{ban.name}</p>
                 </div>
                 <Button

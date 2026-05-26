@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { LostArkClass, FriendRequestStatus } from "@/db/schema"
+import { LostArkClass } from "@/db/schema"
 
 export const createRosterSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -21,12 +21,14 @@ export const updateCharacterSchema = z.object({
   itemLevel: z.number().int().min(1, "Item level is required"),
 })
 
-export const createFriendRequestSchema = z.object({
-  email: z.string().email().optional(),
-  name: z.string().optional(),
-}).refine((data) => data.email || data.name, {
-  message: "Provide email or name to search",
-})
+export const createFriendRequestSchema = z
+  .object({
+    email: z.string().email().optional(),
+    name: z.string().optional(),
+  })
+  .refine((data) => data.email || data.name, {
+    message: "Provide email or name to search",
+  })
 
 export const createGroupSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),

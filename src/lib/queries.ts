@@ -1,10 +1,20 @@
+import { and, desc, eq, inArray, like, not, or, sql } from "drizzle-orm"
 import { db } from "@/db"
 import {
-  rosters, characters, friendRequests, friendships, users,
-  raids, raidDifficulties, characterRaids, FriendRequestStatus, LostArkClass,
-  groups, groupMembers, groupBans, GroupRole,
+  characterRaids,
+  characters,
+  FriendRequestStatus,
+  friendRequests,
+  friendships,
+  GroupRole,
+  groupBans,
+  groupMembers,
+  groups,
+  raidDifficulties,
+  raids,
+  rosters,
+  users,
 } from "@/db/schema"
-import { eq, and, or, like, not, inArray, sql, desc } from "drizzle-orm"
 
 /* ───────── ROSTERS ───────── */
 export function getRosters(userId: string) {
@@ -115,16 +125,10 @@ export function searchUsers(query: string, currentUserId: string) {
                 targetId: sql<string>`CASE WHEN ${friendships.userId} = ${currentUserId} THEN ${friendships.friendId} ELSE ${friendships.userId} END`,
               })
               .from(friendships)
-              .where(
-                or(eq(friendships.userId, currentUserId), eq(friendships.friendId, currentUserId)),
-              ),
+              .where(or(eq(friendships.userId, currentUserId), eq(friendships.friendId, currentUserId))),
           ),
         ),
-        or(
-          like(users.name, `%${query}%`),
-          like(users.email, `%${query}%`),
-          like(users.friendCode, `%${query}%`),
-        ),
+        or(like(users.name, `%${query}%`), like(users.email, `%${query}%`), like(users.friendCode, `%${query}%`)),
       ),
     )
     .limit(20)
@@ -132,10 +136,7 @@ export function searchUsers(query: string, currentUserId: string) {
 
 export function getFriendRequests(userId: string) {
   return db.query.friendRequests.findMany({
-    where: or(
-      eq(friendRequests.senderId, userId),
-      eq(friendRequests.receiverId, userId),
-    ),
+    where: or(eq(friendRequests.senderId, userId), eq(friendRequests.receiverId, userId)),
     with: {
       sender: true,
       receiver: true,
@@ -158,18 +159,11 @@ export function getFriendshipsBothDirections(userId: string) {
 }
 
 export function sendFriendRequest(senderId: string, receiverId: string) {
-  return db
-    .insert(friendRequests)
-    .values({ senderId, receiverId })
-    .returning()
+  return db.insert(friendRequests).values({ senderId, receiverId }).returning()
 }
 
 export function respondToRequest(requestId: string, status: FriendRequestStatus) {
-  return db
-    .update(friendRequests)
-    .set({ status })
-    .where(eq(friendRequests.id, requestId))
-    .returning()
+  return db.update(friendRequests).set({ status }).where(eq(friendRequests.id, requestId)).returning()
 }
 
 export function createFriendship(userId: string, friendId: string) {
@@ -179,12 +173,7 @@ export function createFriendship(userId: string, friendId: string) {
 export function removeFriendship(userId: string, friendId: string) {
   return db
     .delete(friendships)
-    .where(
-      and(
-        eq(friendships.userId, userId),
-        eq(friendships.friendId, friendId),
-      ),
-    )
+    .where(and(eq(friendships.userId, userId), eq(friendships.friendId, friendId)))
     .returning()
 }
 
@@ -243,12 +232,7 @@ export function toggleRaidCompletion(characterId: string, raidDifficultyId: stri
   return db
     .update(characterRaids)
     .set({ completed })
-    .where(
-      and(
-        eq(characterRaids.characterId, characterId),
-        eq(characterRaids.raidDifficultyId, raidDifficultyId),
-      ),
-    )
+    .where(and(eq(characterRaids.characterId, characterId), eq(characterRaids.raidDifficultyId, raidDifficultyId)))
     .returning()
 }
 
@@ -302,11 +286,8 @@ export function createGroup(name: string, userId: string) {
   })
 }
 
-export function deleteGroup(groupId: string, userId: string) {
-  return db
-    .delete(groups)
-    .where(eq(groups.id, groupId))
-    .returning()
+export function deleteGroup(groupId: string, _userId: string) {
+  return db.delete(groups).where(eq(groups.id, groupId)).returning()
 }
 
 export function getGroupOwner(groupId: string) {
@@ -328,12 +309,8 @@ export function transferOwnership(groupId: string, fromUserId: string, toUserId:
   })
 }
 
-export function updateGroupName(groupId: string, userId: string, name: string) {
-  return db
-    .update(groups)
-    .set({ name })
-    .where(eq(groups.id, groupId))
-    .returning()
+export function updateGroupName(groupId: string, _userId: string, name: string) {
+  return db.update(groups).set({ name }).where(eq(groups.id, groupId)).returning()
 }
 
 export function changeMemberRole(groupId: string, targetUserId: string, role: GroupRole) {
@@ -383,9 +360,7 @@ export function kickMember(groupId: string, targetUserId: string) {
 
 export function banUser(groupId: string, userId: string) {
   return db.transaction(async (tx) => {
-    await tx
-      .delete(groupMembers)
-      .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, userId)))
+    await tx.delete(groupMembers).where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, userId)))
     const [ban] = await tx.insert(groupBans).values({ groupId, userId }).returning()
     return ban
   })

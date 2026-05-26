@@ -1,10 +1,18 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-:root {
-  --foreground: #ededed;
-  --background: #181818;
+@theme {
+  --color-surface: #181818;
+  --color-surface-elevated: #1e1e1e;
+  --color-surface-hover: #252525;
+  --color-surface-active: #2a2a2a;
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-success: #22c55e;
+  --color-success-hover: #16a34a;
+  --color-danger: #ef4444;
+  --color-danger-hover: #dc2626;
+  --color-warning: #f59e0b;
+  --color-warning-hover: #d97706;
 }
 
 ::selection {
@@ -13,9 +21,11 @@
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  transition: background-color 200ms ease, color 200ms ease;
+  color: #ededed;
+  background: #181818;
+  transition:
+    background-color 200ms ease,
+    color 200ms ease;
 }
 
 /* Custom scrollbar for dark theme */

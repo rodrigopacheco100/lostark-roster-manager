@@ -1,9 +1,9 @@
+import { eq } from "drizzle-orm"
 import NextAuth from "next-auth"
-import Google from "next-auth/providers/google"
 import Discord from "next-auth/providers/discord"
+import Google from "next-auth/providers/google"
 import { db } from "@/db"
 import { users } from "@/db/schema"
-import { eq } from "drizzle-orm"
 
 const providerField = {
   google: "googleId" as const,
@@ -37,7 +37,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/auth/signin",
   },
   callbacks: {
-    async signIn({ user, profile, account }) {
+    async signIn({ user, profile: _profile, account }) {
       if (!user.email || !account?.provider) return false
 
       const field = providerField[account.provider as keyof typeof providerField]
@@ -49,7 +49,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         where: eq(users.email, user.email),
       })
       if (byEmail) {
-        await db.update(users)
+        await db
+          .update(users)
           .set({ [field]: providerId })
           .where(eq(users.id, byEmail.id))
         return true
@@ -64,7 +65,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       })
       return true
     },
-    async jwt({ token, account, profile }) {
+    async jwt({ token, account, profile: _profile }) {
       if (account?.provider) {
         const field = providerField[account.provider as keyof typeof providerField]
         if (field) {

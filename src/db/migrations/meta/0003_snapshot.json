@@ -63,12 +63,8 @@
           "name": "character_raids_character_id_characters_id_fk",
           "tableFrom": "character_raids",
           "tableTo": "characters",
-          "columnsFrom": [
-            "character_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["character_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -76,12 +72,8 @@
           "name": "character_raids_raid_difficulty_id_raid_difficulties_id_fk",
           "tableFrom": "character_raids",
           "tableTo": "raid_difficulties",
-          "columnsFrom": [
-            "raid_difficulty_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["raid_difficulty_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -141,12 +133,8 @@
           "name": "characters_roster_id_rosters_id_fk",
           "tableFrom": "characters",
           "tableTo": "rosters",
-          "columnsFrom": [
-            "roster_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["roster_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -201,12 +189,8 @@
           "name": "friend_requests_sender_id_users_id_fk",
           "tableFrom": "friend_requests",
           "tableTo": "users",
-          "columnsFrom": [
-            "sender_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sender_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -214,12 +198,8 @@
           "name": "friend_requests_receiver_id_users_id_fk",
           "tableFrom": "friend_requests",
           "tableTo": "users",
-          "columnsFrom": [
-            "receiver_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["receiver_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -267,12 +247,8 @@
           "name": "friendships_user_id_users_id_fk",
           "tableFrom": "friendships",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -280,12 +256,8 @@
           "name": "friendships_friend_id_users_id_fk",
           "tableFrom": "friendships",
           "tableTo": "users",
-          "columnsFrom": [
-            "friend_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["friend_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -355,12 +327,8 @@
           "name": "group_bans_group_id_groups_id_fk",
           "tableFrom": "group_bans",
           "tableTo": "groups",
-          "columnsFrom": [
-            "group_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["group_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -368,12 +336,8 @@
           "name": "group_bans_user_id_users_id_fk",
           "tableFrom": "group_bans",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -450,12 +414,8 @@
           "name": "group_members_group_id_groups_id_fk",
           "tableFrom": "group_members",
           "tableTo": "groups",
-          "columnsFrom": [
-            "group_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["group_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -463,12 +423,8 @@
           "name": "group_members_user_id_users_id_fk",
           "tableFrom": "group_members",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -517,9 +473,7 @@
         "groups_invite_code_unique": {
           "name": "groups_invite_code_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "invite_code"
-          ]
+          "columns": ["invite_code"]
         }
       },
       "policies": {},
@@ -584,12 +538,8 @@
           "name": "raid_difficulties_raid_id_raids_id_fk",
           "tableFrom": "raid_difficulties",
           "tableTo": "raids",
-          "columnsFrom": [
-            "raid_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["raid_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -632,9 +582,7 @@
         "raids_name_unique": {
           "name": "raids_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
+          "columns": ["name"]
         }
       },
       "policies": {},
@@ -678,12 +626,8 @@
           "name": "rosters_user_id_users_id_fk",
           "tableFrom": "rosters",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -756,30 +700,22 @@
         "users_email_unique": {
           "name": "users_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         },
         "users_google_id_unique": {
           "name": "users_google_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "google_id"
-          ]
+          "columns": ["google_id"]
         },
         "users_discord_id_unique": {
           "name": "users_discord_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "discord_id"
-          ]
+          "columns": ["discord_id"]
         },
         "users_friend_code_unique": {
           "name": "users_friend_code_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "friend_code"
-          ]
+          "columns": ["friend_code"]
         }
       },
       "policies": {},

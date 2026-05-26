@@ -10,15 +10,13 @@ export const metadata: Metadata = {
   description: "Track raid progress across your rosters and friends",
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark">
       <head>
         <script
+          suppressHydrationWarning
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: required for FOUC prevention
           dangerouslySetInnerHTML={{
             __html: `document.documentElement.classList.add('dark')`,
           }}

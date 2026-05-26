@@ -1,13 +1,5 @@
 import { relations } from "drizzle-orm"
-import {
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-  integer,
-  boolean,
-  uniqueIndex,
-} from "drizzle-orm/pg-core"
+import { boolean, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core"
 
 /* ───────── ENUMS ───────── */
 export enum FriendRequestStatus {
@@ -23,7 +15,7 @@ export enum GroupRole {
 }
 
 export enum LostArkClass {
-  Artist = 'Artist',
+  Artist = "Artist",
   Berserker = "Berserker",
   Destroyer = "Destroyer",
   Gunlancer = "Gunlancer",
@@ -252,5 +244,8 @@ export const raidDifficultiesRelations = relations(raidDifficulties, ({ one, man
 
 export const characterRaidsRelations = relations(characterRaids, ({ one }) => ({
   character: one(characters, { fields: [characterRaids.characterId], references: [characters.id] }),
-  raidDifficulty: one(raidDifficulties, { fields: [characterRaids.raidDifficultyId], references: [raidDifficulties.id] }),
+  raidDifficulty: one(raidDifficulties, {
+    fields: [characterRaids.raidDifficultyId],
+    references: [raidDifficulties.id],
+  }),
 }))

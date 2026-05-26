@@ -1,25 +1,26 @@
-import { auth } from "@/lib/auth"
-import { getCharacters, createCharacter } from "@/lib/queries"
-import { getRoster } from "@/lib/queries"
-import { createCharacterSchema } from "@/lib/validations"
 import { NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
+import { createCharacter, getCharacters, getRoster } from "@/lib/queries"
+import { createCharacterSchema } from "@/lib/validations"
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const roster = await getRoster(params.id, session.user.id)
+  const roster = await getRoster(id, session.user.id)
   if (!roster) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  const chars = await getCharacters(params.id)
+  const chars = await getCharacters(id)
   return NextResponse.json(chars)
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const roster = await getRoster(params.id, session.user.id)
+  const roster = await getRoster(id, session.user.id)
   if (!roster) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
   const body = await req.json()
@@ -30,7 +31,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     name: parsed.data.name,
     class: parsed.data.class,
     itemLevel: parsed.data.itemLevel,
-    rosterId: params.id,
+    rosterId: id,
   })
   return NextResponse.json(char[0], { status: 201 })
 }

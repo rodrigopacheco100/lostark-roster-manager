@@ -1,9 +1,9 @@
+import { and, eq, or } from "drizzle-orm"
+import { NextResponse } from "next/server"
+import { db } from "@/db"
+import { FriendRequestStatus, friendRequests, friendships } from "@/db/schema"
 import { auth } from "@/lib/auth"
 import { sendFriendRequest } from "@/lib/queries"
-import { db } from "@/db"
-import { friendRequests, friendships, FriendRequestStatus } from "@/db/schema"
-import { and, or, eq } from "drizzle-orm"
-import { NextResponse } from "next/server"
 
 export async function POST(req: Request) {
   const session = await auth()
@@ -15,8 +15,16 @@ export async function POST(req: Request) {
 
   const existingRequest = await db.query.friendRequests.findFirst({
     where: or(
-      and(eq(friendRequests.senderId, session.user.id), eq(friendRequests.receiverId, receiverId), eq(friendRequests.status, FriendRequestStatus.Pending)),
-      and(eq(friendRequests.senderId, receiverId), eq(friendRequests.receiverId, session.user.id), eq(friendRequests.status, FriendRequestStatus.Pending)),
+      and(
+        eq(friendRequests.senderId, session.user.id),
+        eq(friendRequests.receiverId, receiverId),
+        eq(friendRequests.status, FriendRequestStatus.Pending),
+      ),
+      and(
+        eq(friendRequests.senderId, receiverId),
+        eq(friendRequests.receiverId, session.user.id),
+        eq(friendRequests.status, FriendRequestStatus.Pending),
+      ),
     ),
   })
   if (existingRequest) return NextResponse.json({ error: "Friend request already pending" }, { status: 409 })

@@ -1,8 +1,8 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback, useRef } from "react"
-import { Modal } from "@/components/ui"
 import { AlertTriangle, Trash2 } from "lucide-react"
+import { createContext, useCallback, useContext, useState } from "react"
+import { Modal } from "@/components/ui"
 
 interface ConfirmOptions {
   title: string
@@ -51,17 +51,17 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex justify-end gap-3">
               <button
+                type="button"
                 onClick={() => handleClose(false)}
                 className="rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-surface-hover"
               >
                 {state.options.cancelLabel ?? "Cancel"}
               </button>
               <button
+                type="button"
                 onClick={() => handleClose(true)}
                 className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${
-                  state.options.destructive
-                    ? "bg-danger hover:bg-danger-hover"
-                    : "bg-primary hover:bg-primary-hover"
+                  state.options.destructive ? "bg-danger hover:bg-danger-hover" : "bg-primary hover:bg-primary-hover"
                 }`}
               >
                 {state.options.confirmLabel ?? "Confirm"}

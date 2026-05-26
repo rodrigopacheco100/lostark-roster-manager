@@ -1,9 +1,10 @@
-import { auth } from "@/lib/auth"
+import { eq } from "drizzle-orm"
+import Image from "next/image"
 import { redirect } from "next/navigation"
+import { Card, PageHeader } from "@/components/ui"
 import { db } from "@/db"
 import { users } from "@/db/schema"
-import { eq } from "drizzle-orm"
-import { PageHeader, Card } from "@/components/ui"
+import { auth } from "@/lib/auth"
 
 export default async function ProfilePage() {
   const session = await auth()
@@ -19,10 +20,13 @@ export default async function ProfilePage() {
       <div className="space-y-6">
         <div className="flex items-center gap-4">
           {session.user.image && (
-            <img
+            <Image
               src={session.user.image}
               alt="Avatar"
+              width={64}
+              height={64}
               className="h-16 w-16 rounded-full ring-2 ring-surface-hover"
+              unoptimized
             />
           )}
           <div>

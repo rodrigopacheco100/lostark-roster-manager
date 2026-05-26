@@ -1,6 +1,6 @@
-import { auth } from "@/lib/auth"
-import { getRosters, getFriendshipsBothDirections, getGroupsWithMembers } from "@/lib/queries"
 import { NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
+import { getFriendshipsBothDirections, getGroupsWithMembers, getRosters } from "@/lib/queries"
 
 function formatRosters(rosters: Awaited<ReturnType<typeof getRosters>>) {
   return rosters.map((roster) => ({
@@ -86,14 +86,15 @@ export async function GET() {
   for (const entry of groupRosterEntries) {
     const rosters = await getRosters(entry.ownerId)
     entry.rosters = formatRosters(rosters)
-    const member = groupMemberships
-      .flatMap((gm) => gm.group.members)
-      .find((m) => m.user.id === entry.ownerId)
+    const member = groupMemberships.flatMap((gm) => gm.group.members).find((m) => m.user.id === entry.ownerId)
     entry.ownerName = member?.user.name ?? "Unknown"
   }
 
   const allRosters = [
-    { owner: { id: session.user.id, name: "My Rosters", isMe: true, groups: [] as string[] }, rosters: formatRosters(myRosters) },
+    {
+      owner: { id: session.user.id, name: "My Rosters", isMe: true, groups: [] as string[] },
+      rosters: formatRosters(myRosters),
+    },
     ...friendRosters
       .filter((fr) => fr.rosters.length > 0)
       .map((fr) => ({

@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { Card, Badge } from "@/components/ui"
-import { Swords, ChevronDown, ChevronRight } from "lucide-react"
-import { RaidCheckbox } from "./RaidCheckbox"
+import { ChevronDown, ChevronRight, Swords } from "lucide-react"
+import { useMemo, useState } from "react"
+import { Badge, Card } from "@/components/ui"
 import type { RosterData } from "../_types"
+import { RaidCheckbox } from "./RaidCheckbox"
 
 export function RosterSection({
   roster,
@@ -33,12 +33,12 @@ export function RosterSection({
 
   return (
     <Card>
-      <button
-        type="button"
-        onClick={() => setCollapsed(!collapsed)}
-        className="mb-3 flex w-full items-center gap-2"
-      >
-        {collapsed ? <ChevronRight className="h-4 w-4 text-gray-500 shrink-0" /> : <ChevronDown className="h-4 w-4 text-gray-500 shrink-0" />}
+      <button type="button" onClick={() => setCollapsed(!collapsed)} className="mb-3 flex w-full items-center gap-2">
+        {collapsed ? (
+          <ChevronRight className="h-4 w-4 text-gray-500 shrink-0" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-gray-500 shrink-0" />
+        )}
         <h3 className="font-medium text-gray-100">{roster.rosterName}</h3>
         <span className="text-sm text-gray-500 ml-auto">{roster.totalCharacters} chars</span>
       </button>
@@ -48,9 +48,7 @@ export function RosterSection({
           <span
             key={`${g.raidName}::${g.difficulty}`}
             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-              g.completed === g.total
-                ? "bg-green-900/40 text-green-400"
-                : "bg-surface-hover text-gray-400"
+              g.completed === g.total ? "bg-green-900/40 text-green-400" : "bg-surface-hover text-gray-400"
             }`}
           >
             {g.completed}/{g.total} {g.raidName} ({g.difficulty})

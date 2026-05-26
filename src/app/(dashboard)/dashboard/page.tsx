@@ -1,25 +1,26 @@
 "use client"
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { Card, Skeleton, PageHeader } from "@/components/ui"
+import { Card, PageHeader, Skeleton } from "@/components/ui"
+import { httpClient } from "@/lib/api"
 import { OwnerSection } from "./_compose/OwnerSection"
 import type { DashboardData } from "./_types"
-import { http } from "@/lib/api"
 
 export default function DashboardPage() {
   const queryClient = useQueryClient()
   const { data: dashData } = useQuery({
     queryKey: ["dashboard"],
-    queryFn: () => http.get<DashboardData>("/api/dashboard"),
+    queryFn: () => httpClient.get<DashboardData>("/api/dashboard"),
     refetchInterval: 60000,
   })
 
   const myRosters = dashData?.rosters.find((g) => g.owner.isMe)
   const totalRaids = myRosters?.rosters.reduce((s, r) => s + r.totalRaidsAssigned, 0) ?? 0
-  const totalCompleted = myRosters?.rosters.reduce(
-    (s, r) => s + r.characters.reduce((sc, c) => sc + c.raids.filter((ra) => ra.completed).length, 0),
-    0,
-  ) ?? 0
+  const totalCompleted =
+    myRosters?.rosters.reduce(
+      (s, r) => s + r.characters.reduce((sc, c) => sc + c.raids.filter((ra) => ra.completed).length, 0),
+      0,
+    ) ?? 0
   const pct = totalRaids > 0 ? Math.round((totalCompleted / totalRaids) * 100) : 0
 
   return (
@@ -33,18 +34,13 @@ export default function DashboardPage() {
         <Card className="overflow-hidden">
           <div className="p-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-300">
-                Weekly Progress
-              </span>
+              <span className="text-sm font-medium text-gray-300">Weekly Progress</span>
               <span className="text-sm text-gray-400">
                 {totalCompleted}/{totalRaids} raids completed
               </span>
             </div>
             <div className="mt-2 h-2.5 w-full rounded-full bg-surface-hover">
-              <div
-                className="h-2.5 rounded-full bg-blue-500 transition-all"
-                style={{ width: `${pct}%` }}
-              />
+              <div className="h-2.5 rounded-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
             </div>
           </div>
         </Card>
@@ -56,8 +52,8 @@ export default function DashboardPage() {
 
       <div className="space-y-6">
         {!dashData
-          ? Array.from({ length: 2 }).map((_, i) => (
-            <div key={i}>
+          ? [0, 1].map((n) => (
+            <div key={`skeleton-${n}`}>
               <Skeleton width="30%" height="1.25rem" className="mb-3" />
               <Card>
                 <Skeleton width="60%" height="1rem" className="mb-3" />

@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from "react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Check, Pencil, Plus, Sword, Trash2, X } from "lucide-react"
 import Link from "next/link"
-import { Plus, Pencil, Trash2, Sword, Check, X } from "lucide-react"
-import { Card, Button, Input, PageHeader, EmptyState } from "@/components/ui"
+import { useState } from "react"
+import { Button, Card, EmptyState, Input, PageHeader } from "@/components/ui"
 import { useConfirm } from "@/hooks/useConfirm"
 import { useToast } from "@/hooks/useToast"
-import { http } from "@/lib/api"
+import { httpClient } from "@/lib/api"
 
 type Roster = {
   id: string
@@ -17,10 +17,10 @@ type Roster = {
 
 export default function RostersPage() {
   const queryClient = useQueryClient()
-  const { toast, promise } = useToast()
+  const { promise } = useToast()
   const { data: rosters } = useQuery<Roster[]>({
     queryKey: ["/api/rosters"],
-    queryFn: () => http.get<Roster[]>("/api/rosters"),
+    queryFn: () => httpClient.get<Roster[]>("/api/rosters"),
   })
   const [newName, setNewName] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -28,37 +28,36 @@ export default function RostersPage() {
   const { confirm } = useConfirm()
 
   const createMutation = useMutation({
-    mutationFn: (name: string) =>
-      http.post<Roster>("/api/rosters", { name }),
+    mutationFn: (name: string) => httpClient.post<Roster>("/api/rosters", { name }),
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) =>
-      http.put(`/api/rosters/${id}`, { name }),
+    mutationFn: ({ id, name }: { id: string; name: string }) => httpClient.put(`/api/rosters/${id}`, { name }),
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) =>
-      http.delete(`/api/rosters/${id}`),
+    mutationFn: (id: string) => httpClient.delete(`/api/rosters/${id}`),
   })
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     if (!newName.trim()) return
-    await promise(
-      createMutation.mutateAsync(newName),
-      { loading: "Creating...", success: "Roster created!", error: (err: Error) => err.message },
-    )
+    await promise(createMutation.mutateAsync(newName), {
+      loading: "Creating...",
+      success: "Roster created!",
+      error: (err: Error) => err.message,
+    })
     setNewName("")
     queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
   }
 
   async function handleUpdate(id: string) {
     if (!editName.trim()) return
-    await promise(
-      updateMutation.mutateAsync({ id, name: editName }),
-      { loading: "Updating...", success: "Roster updated!", error: (err: Error) => err.message },
-    )
+    await promise(updateMutation.mutateAsync({ id, name: editName }), {
+      loading: "Updating...",
+      success: "Roster updated!",
+      error: (err: Error) => err.message,
+    })
     setEditingId(null)
     queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
   }
@@ -72,10 +71,11 @@ export default function RostersPage() {
       destructive: true,
     })
     if (!ok) return
-    await promise(
-      deleteMutation.mutateAsync(id),
-      { loading: "Deleting...", success: "Roster deleted", error: (err: Error) => err.message },
-    )
+    await promise(deleteMutation.mutateAsync(id), {
+      loading: "Deleting...",
+      success: "Roster deleted",
+      error: (err: Error) => err.message,
+    })
     queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
   }
 
@@ -115,7 +115,12 @@ export default function RostersPage() {
                     autoFocus
                     className="flex-1"
                   />
-                  <Button variant="primary" size="sm" onClick={() => handleUpdate(roster.id)} icon={<Check className="h-4 w-4" />}>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleUpdate(roster.id)}
+                    icon={<Check className="h-4 w-4" />}
+                  >
                     Save
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setEditingId(null)} icon={<X className="h-4 w-4" />}>
@@ -131,9 +136,7 @@ export default function RostersPage() {
                     >
                       {roster.name}
                     </Link>
-                    <span className="text-sm text-gray-500">
-                      {roster.characters.length} characters
-                    </span>
+                    <span className="text-sm text-gray-500">{roster.characters.length} characters</span>
                   </div>
                   <div className="flex gap-1">
                     <Button

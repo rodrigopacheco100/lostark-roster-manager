@@ -1,7 +1,7 @@
+import { timingSafeEqual } from "node:crypto"
+import { NextResponse } from "next/server"
 import { db } from "@/db"
 import { characterRaids } from "@/db/schema"
-import { NextResponse } from "next/server"
-import { timingSafeEqual } from "crypto"
 
 function validateApiKey(req: Request): boolean {
   const apiKey = req.headers.get("x-api-key")

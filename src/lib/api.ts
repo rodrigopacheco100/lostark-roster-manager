@@ -9,13 +9,13 @@ async function handleResponse<T>(promise: Promise<{ data: T }>): Promise<T> {
       throw new Error(error.response.data.error)
     }
     if (axios.isAxiosError(error) && error.response?.status) {
-      throw new Error(`Error ${error.response.status}`)
+      throw new Error(error.response.statusText)
     }
     throw new Error("Connection error")
   }
 }
 
-export const http = {
+export const httpClient = {
   get: <T>(url: string) => handleResponse<T>(axios.get<T>(url)),
   post: <T>(url: string, data?: unknown) => handleResponse<T>(axios.post<T>(url, data)),
   put: <T>(url: string, data?: unknown) => handleResponse<T>(axios.put<T>(url, data)),

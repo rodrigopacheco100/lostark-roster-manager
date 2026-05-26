@@ -49,11 +49,13 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
   } = useQuery<GroupDetail>({
     queryKey: [`/api/groups/${params.id}`],
     queryFn: () => httpClient.get<GroupDetail>(`/api/groups/${params.id}`),
+    staleTime: 10_000,
     retry: false,
   })
   const { data: currentUser } = useQuery<{ id: string }>({
     queryKey: ["/api/user/me"],
     queryFn: () => httpClient.get<{ id: string }>("/api/user/me"),
+    staleTime: 10_000,
   })
   const { confirm } = useConfirm()
   const { toast, promise } = useToast()

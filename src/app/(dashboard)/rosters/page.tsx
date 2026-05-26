@@ -21,6 +21,7 @@ export default function RostersPage() {
   const { data: rosters } = useQuery<Roster[]>({
     queryKey: ["/api/rosters"],
     queryFn: () => httpClient.get<Roster[]>("/api/rosters"),
+    staleTime: 10_000,
   })
   const [newName, setNewName] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)

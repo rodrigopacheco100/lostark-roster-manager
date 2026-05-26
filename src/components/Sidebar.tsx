@@ -1,6 +1,6 @@
 "use client"
 
-import { Group, LayoutDashboard, LogOut, Sword, UserCircle, Users } from "lucide-react"
+import { Coffee, ExternalLink, Group, LayoutDashboard, LogOut, Sword, UserCircle, Users } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -57,6 +57,19 @@ export function Sidebar({ signOutAction }: { signOutAction: () => Promise<void> 
       </div>
 
       <div className="border-t border-gray-700 pt-3">
+        <a
+          href="https://buymeacoffee.com/axiosz"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 transition-colors duration-200 hover:bg-surface-hover hover:text-yellow-400"
+        >
+          <Coffee className="h-4 w-4 shrink-0" />
+          Buy me a coffee
+          <ExternalLink className="ml-auto h-3 w-3 shrink-0" />
+        </a>
+      </div>
+
+      <div className="pt-3">
         <form action={signOutAction}>
           <button
             type="submit"

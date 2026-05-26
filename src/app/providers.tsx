@@ -6,7 +6,18 @@ import { Toaster } from "react-hot-toast"
 import { ConfirmProvider } from "@/hooks/useConfirm"
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient())
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 10_000,
+            gcTime: 300_000,
+            retry: 2,
+          },
+        },
+      }),
+  )
 
   return (
     <QueryClientProvider client={queryClient}>

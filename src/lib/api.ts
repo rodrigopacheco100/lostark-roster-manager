@@ -5,6 +5,9 @@ async function handleResponse<T>(promise: Promise<{ data: T }>): Promise<T> {
     const { data } = await promise
     return data
   } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 429) {
+      throw new Error("Too many requests. Try again later.")
+    }
     if (axios.isAxiosError(error) && error.response?.data?.error) {
       throw new Error(error.response.data.error)
     }

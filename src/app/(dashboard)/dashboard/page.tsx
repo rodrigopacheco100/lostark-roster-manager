@@ -11,7 +11,8 @@ export default function DashboardPage() {
   const { data: dashData } = useQuery({
     queryKey: ["dashboard"],
     queryFn: () => httpClient.get<DashboardData>("/api/dashboard"),
-    refetchInterval: 60000,
+    staleTime: 5_000,
+    refetchInterval: 20_000,
   })
 
   const myRosters = dashData?.rosters.find((g) => g.owner.isMe)
@@ -53,21 +54,21 @@ export default function DashboardPage() {
       <div className="space-y-6">
         {!dashData
           ? [0, 1].map((n) => (
-            <div key={`skeleton-${n}`}>
-              <Skeleton width="30%" height="1.25rem" className="mb-3" />
-              <Card>
-                <Skeleton width="60%" height="1rem" className="mb-3" />
-                <Skeleton width="100%" height="3rem" />
-              </Card>
-            </div>
-          ))
+              <div key={`skeleton-${n}`}>
+                <Skeleton width="30%" height="1.25rem" className="mb-3" />
+                <Card>
+                  <Skeleton width="60%" height="1rem" className="mb-3" />
+                  <Skeleton width="100%" height="3rem" />
+                </Card>
+              </div>
+            ))
           : dashData.rosters.map((group) => (
-            <OwnerSection
-              key={group.owner.id}
-              group={group}
-              onToggle={() => queryClient.invalidateQueries({ queryKey: ["dashboard"] })}
-            />
-          ))}
+              <OwnerSection
+                key={group.owner.id}
+                group={group}
+                onToggle={() => queryClient.invalidateQueries({ queryKey: ["dashboard"] })}
+              />
+            ))}
       </div>
     </div>
   )

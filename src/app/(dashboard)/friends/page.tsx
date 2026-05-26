@@ -31,14 +31,17 @@ export default function FriendsPage() {
   const { data: friends } = useQuery<User[]>({
     queryKey: ["/api/friends"],
     queryFn: () => httpClient.get<User[]>("/api/friends"),
+    staleTime: 10_000,
   })
   const { data: requests } = useQuery<FriendRequest[]>({
     queryKey: ["/api/friends/requests"],
     queryFn: () => httpClient.get<FriendRequest[]>("/api/friends/requests"),
+    staleTime: 10_000,
   })
   const { data: currentUser } = useQuery<User>({
     queryKey: ["/api/user/me"],
     queryFn: () => httpClient.get<User>("/api/user/me"),
+    staleTime: 10_000,
   })
   const { confirm } = useConfirm()
   const { promise } = useToast()
@@ -253,25 +256,25 @@ export default function FriendsPage() {
                   <div className="flex items-center gap-3">
                     {isSentByMe
                       ? req.receiver.image && (
-                        <Image
-                          src={req.receiver.image}
-                          alt=""
-                          width={32}
-                          height={32}
-                          className="h-8 w-8 rounded-full"
-                          unoptimized
-                        />
-                      )
+                          <Image
+                            src={req.receiver.image}
+                            alt=""
+                            width={32}
+                            height={32}
+                            className="h-8 w-8 rounded-full"
+                            unoptimized
+                          />
+                        )
                       : req.sender.image && (
-                        <Image
-                          src={req.sender.image}
-                          alt=""
-                          width={32}
-                          height={32}
-                          className="h-8 w-8 rounded-full"
-                          unoptimized
-                        />
-                      )}
+                          <Image
+                            src={req.sender.image}
+                            alt=""
+                            width={32}
+                            height={32}
+                            className="h-8 w-8 rounded-full"
+                            unoptimized
+                          />
+                        )}
                     <div>
                       <p className="font-medium text-gray-200">{isSentByMe ? req.receiver.name : req.sender.name}</p>
                       <p className="text-sm text-gray-500">

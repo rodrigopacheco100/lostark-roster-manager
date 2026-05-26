@@ -56,11 +56,13 @@ export default function RosterDetailPage() {
   } = useQuery<Roster>({
     queryKey: [`/api/rosters/${rosterId}`],
     queryFn: () => httpClient.get<Roster>(`/api/rosters/${rosterId}`),
+    staleTime: 10_000,
     retry: false,
   })
   const { data: allRaids } = useQuery<Raid[]>({
     queryKey: ["/api/raids"],
     queryFn: () => httpClient.get<Raid[]>("/api/raids"),
+    staleTime: 10_000,
   })
   const { confirm } = useConfirm()
   const { toast, promise } = useToast()

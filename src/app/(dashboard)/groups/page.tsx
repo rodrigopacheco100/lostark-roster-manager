@@ -22,6 +22,7 @@ export default function GroupsPage() {
   const { data: groups } = useQuery<Group[]>({
     queryKey: ["/api/groups"],
     queryFn: () => httpClient.get<Group[]>("/api/groups"),
+    staleTime: 10_000,
   })
 
   const [createModalOpen, setCreateModalOpen] = useState(false)

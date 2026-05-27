@@ -1,3 +1,5 @@
+import type { LostArkClass } from "@/db/schema"
+
 export type CharacterRaidData = {
   characterRaidId: string
   raidDifficultyId: string
@@ -10,7 +12,7 @@ export type CharacterRaidData = {
 export type CharacterData = {
   id: string
   name: string
-  class: string
+  class: LostArkClass
   itemLevel: number
   raids: CharacterRaidData[]
 }

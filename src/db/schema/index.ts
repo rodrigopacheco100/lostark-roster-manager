@@ -21,6 +21,7 @@ export enum LostArkClass {
   Gunlancer = "Gunlancer",
   Paladin = "Paladin",
   Slayer = "Slayer",
+  Valkyrie = "Valkyrie",
 
   // Mages
   Arcanist = "Arcanist",

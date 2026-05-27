@@ -5,6 +5,7 @@ import { ArrowLeft, Check, Pencil, Plus, Trash2, X } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import { RaidCombobox } from "@/components/raid/RaidCombobox"
 import { Badge, Button, Card, Input, PageHeader, Select } from "@/components/ui"
 import { LostArkClass } from "@/db/schema"
 import { useConfirm } from "@/hooks/useConfirm"
@@ -82,8 +83,7 @@ export default function RosterDetailPage() {
   const [editClass, setEditClass] = useState<LostArkClass>(LostArkClass.Berserker)
   const [editItemLevel, setEditItemLevel] = useState("")
 
-  const [assignCharId, setAssignCharId] = useState<string | null>(null)
-  const [assignRaidDifficultyId, setAssignRaidDifficultyId] = useState("")
+  const [raidComboboxCharId, setRaidComboboxCharId] = useState<string | null>(null)
 
   const addCharacterMutation = useMutation({
     mutationFn: (data: { name: string; class: LostArkClass; itemLevel: number }) =>
@@ -106,11 +106,6 @@ export default function RosterDetailPage() {
 
   const deleteCharacterMutation = useMutation({
     mutationFn: (id: string) => httpClient.delete(`/api/characters/${id}`),
-  })
-
-  const assignRaidMutation = useMutation({
-    mutationFn: ({ characterId, raidDifficultyId }: { characterId: string; raidDifficultyId: string }) =>
-      httpClient.post(`/api/characters/${characterId}/raids`, { raidDifficultyId }),
   })
 
   const removeRaidMutation = useMutation({
@@ -162,18 +157,6 @@ export default function RosterDetailPage() {
     queryClient.invalidateQueries({ queryKey: [`/api/rosters/${rosterId}`] })
   }
 
-  async function handleAssignRaid(characterId: string) {
-    if (!assignRaidDifficultyId) return
-    await promise(assignRaidMutation.mutateAsync({ characterId, raidDifficultyId: assignRaidDifficultyId }), {
-      loading: "Assigning...",
-      success: "Raid assigned!",
-      error: (err: Error) => err.message,
-    })
-    setAssignCharId(null)
-    setAssignRaidDifficultyId("")
-    queryClient.invalidateQueries({ queryKey: [`/api/rosters/${rosterId}`] })
-  }
-
   async function handleRemoveRaid(characterId: string, characterRaidId: string) {
     await promise(removeRaidMutation.mutateAsync({ characterId, characterRaidId }), {
       loading: "Removing...",
@@ -181,21 +164,6 @@ export default function RosterDetailPage() {
       error: (err: Error) => err.message,
     })
     queryClient.invalidateQueries({ queryKey: [`/api/rosters/${rosterId}`] })
-  }
-
-  function availableDifficulties(character: Character) {
-    if (!allRaids) return []
-    const result: { rdId: string; raidName: string; difficulty: string; minIlvl: number }[] = []
-    const assignedRaidIds = new Set(character.characterRaids.map((cr) => cr.raidDifficulty.raid.id))
-    for (const raid of allRaids) {
-      if (assignedRaidIds.has(raid.id)) continue
-      for (const rd of raid.difficulties) {
-        if (character.itemLevel >= rd.minIlvl) {
-          result.push({ rdId: rd.id, raidName: raid.name, difficulty: rd.difficulty, minIlvl: rd.minIlvl })
-        }
-      }
-    }
-    return result
   }
 
   if (!roster) return <div className="p-8 text-gray-500">Loading...</div>
@@ -308,39 +276,21 @@ export default function RosterDetailPage() {
                     <p className="mb-3 text-sm text-gray-500">No raids assigned</p>
                   )}
 
-                  {assignCharId === char.id ? (
-                    <div className="flex items-center gap-2">
-                      <Select
-                        value={assignRaidDifficultyId}
-                        onChange={(e) => setAssignRaidDifficultyId(e.target.value)}
-                        options={[
-                          { value: "", label: "Select raid" },
-                          ...availableDifficulties(char).map((av) => ({
-                            value: av.rdId,
-                            label: `${av.raidName} - ${av.difficulty} (IL ${av.minIlvl})`,
-                          })),
-                        ]}
-                        className="flex-1"
-                      />
-                      <Button size="sm" onClick={() => handleAssignRaid(char.id)} icon={<Plus className="h-4 w-4" />}>
-                        Add
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setAssignCharId(null)}>
-                        Cancel
-                      </Button>
-                    </div>
+                  {raidComboboxCharId === char.id && allRaids ? (
+                    <RaidCombobox
+                      character={char}
+                      allRaids={allRaids}
+                      rosterId={rosterId}
+                      onClose={() => setRaidComboboxCharId(null)}
+                    />
                   ) : (
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
-                        setAssignCharId(char.id)
-                        setAssignRaidDifficultyId("")
-                      }}
-                      disabled={char.characterRaids.length >= 3}
+                      onClick={() => setRaidComboboxCharId(char.id)}
                       icon={<Plus className="h-4 w-4" />}
                     >
-                      {char.characterRaids.length >= 3 ? "Max raids (3)" : "Assign Raid"}
+                      Edit Raids
                     </Button>
                   )}
                 </div>

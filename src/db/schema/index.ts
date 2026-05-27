@@ -27,7 +27,7 @@ export enum LostArkClass {
   Summoner = "Summoner",
   Bard = "Bard",
   Sorceress = "Sorceress",
-  
+
   // Martial Artists
   Wardancer = "Wardancer",
   Scrapper = "Scrapper",
@@ -41,14 +41,14 @@ export enum LostArkClass {
   Shadowhunter = "Shadowhunter",
   Reaper = "Reaper",
   Souleater = "Souleater",
-  
+
   // Gunner
   Sharpshooter = "Sharpshooter",
   Deadeye = "Deadeye",
   Artillerist = "Artillerist",
   Machinist = "Machinist",
   Gunslinger = "Gunslinger",
-  
+
   // Specialist
   Artist = "Artist",
   Aeromancer = "Aeromancer",

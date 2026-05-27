@@ -40,7 +40,7 @@ type GroupDetail = {
 }
 
 export default function GroupDetailPage() {
-  const params = useParams<{id: string}>()
+  const params = useParams<{ id: string }>()
   const groupId = params.id
   const router = useRouter()
   const queryClient = useQueryClient()

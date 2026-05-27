@@ -1,9 +1,9 @@
 "use client"
 
-import { signOut } from "next-auth/react"
 import { Coffee, ExternalLink, Group, LayoutDashboard, LogOut, Sword, UserCircle, Users } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { signOut } from "next-auth/react"
 
 const navGroups = [
   {

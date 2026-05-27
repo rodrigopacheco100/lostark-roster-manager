@@ -243,6 +243,68 @@ export function getCharacterWithRoster(characterId: string) {
   })
 }
 
+export function syncCharacterRaids(characterId: string, desiredRaidDifficultyIds: string[]) {
+  return db.transaction(async (tx) => {
+    const character = await tx.query.characters.findFirst({
+      where: eq(characters.id, characterId),
+    })
+    if (!character) throw new Error("Character not found")
+
+    if (desiredRaidDifficultyIds.length > 3) {
+      throw new Error("Character can have at most 3 raids")
+    }
+
+    const existing = await tx.query.characterRaids.findMany({
+      where: eq(characterRaids.characterId, characterId),
+      with: {
+        raidDifficulty: {
+          with: { raid: true },
+        },
+      },
+    })
+
+    let desiredRds: {
+      id: string
+      raidId: string
+      difficulty: string
+      minIlvl: number
+      raid: { id: string; name: string }
+    }[] = []
+    if (desiredRaidDifficultyIds.length > 0) {
+      desiredRds = await tx.query.raidDifficulties.findMany({
+        where: inArray(raidDifficulties.id, desiredRaidDifficultyIds),
+        with: { raid: true },
+      })
+    }
+
+    const seenRaidIds = new Set<string>()
+
+    for (const rd of desiredRds) {
+      if (seenRaidIds.has(rd.raid.id)) {
+        throw new Error(`Cannot have two difficulties of the same raid (${rd.raid.name})`)
+      }
+      seenRaidIds.add(rd.raid.id)
+
+      if (character.itemLevel < rd.minIlvl) {
+        throw new Error(`Item level too low for ${rd.raid.name} - ${rd.difficulty}`)
+      }
+    }
+
+    const existingIds = new Set(existing.map((cr) => cr.raidDifficultyId))
+    const toAdd = desiredRaidDifficultyIds.filter((id) => !existingIds.has(id))
+    const toRemove = existing.filter((cr) => !desiredRaidDifficultyIds.includes(cr.raidDifficultyId))
+
+    if (toAdd.length > 0) {
+      await tx.insert(characterRaids).values(toAdd.map((rdId) => ({ characterId, raidDifficultyId: rdId })))
+    }
+    for (const cr of toRemove) {
+      await tx.delete(characterRaids).where(eq(characterRaids.id, cr.id))
+    }
+
+    return { added: toAdd.length, removed: toRemove.length }
+  })
+}
+
 /* ───────── GROUPS ───────── */
 export function getUserGroups(userId: string) {
   return db.query.groupMembers.findMany({

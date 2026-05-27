@@ -1,7 +1,6 @@
 import { eq } from "drizzle-orm"
-import NextAuth from "next-auth"
-import { getServerSession } from "next-auth"
 import type { AuthOptions } from "next-auth"
+import NextAuth, { getServerSession } from "next-auth"
 import Discord from "next-auth/providers/discord"
 import Google from "next-auth/providers/google"
 import { db } from "@/db"

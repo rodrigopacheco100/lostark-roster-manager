@@ -9,6 +9,7 @@ import {
   getCharacterRaids,
   getCharacterWithRoster,
   removeCharacterRaid,
+  syncCharacterRaids,
   toggleRaidCompletion,
 } from "@/lib/queries"
 
@@ -60,6 +61,43 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
   await removeCharacterRaid(characterRaidId)
   return NextResponse.json({ success: true })
+}
+
+const putSchema = z.object({
+  raidDifficultyIds: z.array(z.string()).max(3),
+})
+
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const character = await getCharacterWithRoster(id)
+  if (!character) return NextResponse.json({ error: "Character not found" }, { status: 404 })
+  if (character.roster.userId !== session.user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  const body = await req.json().catch(() => null)
+  if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
+
+  const parsed = putSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: `Invalid request: ${parsed.error.message}` }, { status: 400 })
+  }
+
+  try {
+    const result = await syncCharacterRaids(id, parsed.data.raidDifficultyIds)
+    return NextResponse.json(result)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error"
+    if (message.includes("already has")) return NextResponse.json({ error: message }, { status: 409 })
+    if (message.includes("at most 3") || message.includes("too low") || message.includes("same raid")) {
+      return NextResponse.json({ error: message }, { status: 400 })
+    }
+    if (message.includes("not found")) return NextResponse.json({ error: message }, { status: 404 })
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }
 
 const toggleSchema = z.object({

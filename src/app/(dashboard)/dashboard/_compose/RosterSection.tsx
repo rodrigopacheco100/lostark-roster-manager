@@ -3,17 +3,18 @@
 import { ChevronDown, ChevronRight, Swords } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Badge, Card } from "@/components/ui"
+import type { ToggleEntry } from "@/hooks/useRaidToggleQueue"
 import type { RosterData } from "../_types"
 import { RaidCheckbox } from "./RaidCheckbox"
 
 export function RosterSection({
   roster,
   isOwner,
-  onToggle,
+  enqueue,
 }: {
   roster: RosterData
   isOwner: boolean
-  onToggle: () => void
+  enqueue: (entry: ToggleEntry) => void
 }) {
   const [collapsed, setCollapsed] = useState(true)
 
@@ -81,7 +82,7 @@ export function RosterSection({
                         raid={r}
                         characterId={char.id}
                         isOwner={isOwner}
-                        onToggle={onToggle}
+                        enqueue={enqueue}
                       />
                     ))}
                   </div>

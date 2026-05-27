@@ -2,10 +2,11 @@
 
 import { ChevronDown, ChevronRight } from "lucide-react"
 import { useMemo, useState } from "react"
+import type { ToggleEntry } from "@/hooks/useRaidToggleQueue"
 import type { OwnerRosters } from "../_types"
 import { RosterSection } from "./RosterSection"
 
-export function OwnerSection({ group, onToggle }: { group: OwnerRosters; onToggle: () => void }) {
+export function OwnerSection({ group, enqueue }: { group: OwnerRosters; enqueue: (entry: ToggleEntry) => void }) {
   const [collapsed, setCollapsed] = useState(true)
   const isOwner = group.owner.isMe
 
@@ -55,7 +56,7 @@ export function OwnerSection({ group, onToggle }: { group: OwnerRosters; onToggl
       {!collapsed && (
         <div className="space-y-4 pl-1">
           {group.rosters.map((roster) => (
-            <RosterSection key={roster.rosterId} roster={roster} isOwner={isOwner} onToggle={onToggle} />
+            <RosterSection key={roster.rosterId} roster={roster} isOwner={isOwner} enqueue={enqueue} />
           ))}
         </div>
       )}

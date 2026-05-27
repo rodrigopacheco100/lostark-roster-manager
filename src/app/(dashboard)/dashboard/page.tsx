@@ -1,13 +1,14 @@
 "use client"
 
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { Card, PageHeader, Skeleton } from "@/components/ui"
+import { useRaidToggleQueue } from "@/hooks/useRaidToggleQueue"
 import { httpClient } from "@/lib/api"
 import { OwnerSection } from "./_compose/OwnerSection"
 import type { DashboardData } from "./_types"
 
 export default function DashboardPage() {
-  const queryClient = useQueryClient()
+  const { enqueue } = useRaidToggleQueue()
   const { data: dashData } = useQuery({
     queryKey: ["dashboard"],
     queryFn: () => httpClient.get<DashboardData>("/api/dashboard"),
@@ -62,13 +63,7 @@ export default function DashboardPage() {
                 </Card>
               </div>
             ))
-          : dashData.rosters.map((group) => (
-              <OwnerSection
-                key={group.owner.id}
-                group={group}
-                onToggle={() => queryClient.invalidateQueries({ queryKey: ["dashboard"] })}
-              />
-            ))}
+          : dashData.rosters.map((group) => <OwnerSection key={group.owner.id} group={group} enqueue={enqueue} />)}
       </div>
     </div>
   )

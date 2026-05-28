@@ -27,7 +27,7 @@ export function RaidCombobox({ character, allRaids, rosterId, onClose }: RaidCom
     return new Set(character.characterRaids.map((cr) => cr.raidDifficulty.id))
   })
   const popoverRef = useRef<HTMLDivElement>(null)
-  const triggerRef = useRef<HTMLButtonElement>(null)
+  const triggerRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
 
   const selectedCount = checkedIds.size
@@ -161,11 +161,18 @@ export function RaidCombobox({ character, allRaids, rosterId, onClose }: RaidCom
 
   return (
     <div className="relative">
-      <button
+      <div
         ref={triggerRef}
-        type="button"
+        role="button"
+        tabIndex={0}
         onClick={() => setIsPopoverOpen((prev) => !prev)}
-        className="flex w-3xl items-center gap-1.5 rounded-lg border border-gray-700 bg-surface-elevated px-3 py-2 text-sm text-gray-200 transition-colors hover:border-gray-600"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            setIsPopoverOpen((prev) => !prev)
+          }
+        }}
+        className="flex w-3xl cursor-pointer items-center gap-1.5 rounded-lg border border-gray-700 bg-surface-elevated px-3 py-2 text-sm text-gray-200 transition-colors hover:border-gray-600"
       >
         {selectedCount > 0 ? (
           <div className="flex flex-1 flex-wrap gap-1">
@@ -190,7 +197,7 @@ export function RaidCombobox({ character, allRaids, rosterId, onClose }: RaidCom
           <span className="flex-1 text-left text-gray-400">Edit Raids (0/3)</span>
         )}
         <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isPopoverOpen ? "rotate-180" : ""}`} />
-      </button>
+      </div>
 
       {isPopoverOpen && (
         <div

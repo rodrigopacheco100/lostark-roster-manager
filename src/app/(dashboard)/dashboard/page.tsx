@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { Card, PageHeader, Skeleton } from "@/components/ui"
-import { useRaidToggleQueue } from "@/hooks/useRaidToggleQueue"
+import { isTogglingRef, useRaidToggleQueue } from "@/hooks/useRaidToggleQueue"
 import { httpClient } from "@/lib/api"
 import { OwnerSection } from "./_compose/OwnerSection"
 import type { DashboardData } from "./_types"
@@ -13,7 +13,7 @@ export default function DashboardPage() {
     queryKey: ["dashboard"],
     queryFn: () => httpClient.get<DashboardData>("/api/dashboard"),
     staleTime: 5_000,
-    refetchInterval: 20_000,
+    refetchInterval: () => (isTogglingRef.current ? false : 20_000),
   })
 
   const myRosters = dashData?.rosters.find((g) => g.owner.isMe)

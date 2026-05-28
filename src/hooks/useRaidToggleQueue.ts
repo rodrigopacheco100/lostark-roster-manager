@@ -6,6 +6,8 @@ import type { DashboardData } from "@/app/(dashboard)/dashboard/_types"
 import { useToast } from "@/hooks/useToast"
 import { httpClient } from "@/lib/api"
 
+export const isTogglingRef = { current: false }
+
 export type ToggleEntry = {
   characterId: string
   raidDifficultyId: string
@@ -59,16 +61,19 @@ export function useRaidToggleQueue() {
         error: (err: Error) => err.message,
       })
       queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      isTogglingRef.current = false
     } catch {
       if (prevSnapshot) {
         queryClient.setQueryData<DashboardData>(["dashboard"], prevSnapshot)
       }
+      isTogglingRef.current = false
     }
   }, [queryClient, promise])
 
   const enqueue = useCallback(
     (entry: ToggleEntry) => {
       if (queueRef.current.size === 0) {
+        isTogglingRef.current = true
         queryClient.cancelQueries({ queryKey: ["dashboard"] })
         snapshotRef.current = structuredClone(queryClient.getQueryData<DashboardData>(["dashboard"])) ?? null
       }

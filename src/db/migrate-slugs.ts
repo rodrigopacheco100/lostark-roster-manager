@@ -1,7 +1,7 @@
 import "dotenv/config"
+import { eq } from "drizzle-orm"
 import { db } from "./index"
 import { raids } from "./schema"
-import { eq } from "drizzle-orm"
 
 function nameToSlug(name: string): string {
   return name

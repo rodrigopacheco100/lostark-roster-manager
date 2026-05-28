@@ -102,7 +102,13 @@ export async function GET() {
 
   const allRosters = [
     {
-      owner: { id: session.user.id, name: "My Rosters", image: currentUser?.image ?? null, isMe: true, groups: [] as string[] },
+      owner: {
+        id: session.user.id,
+        name: "My Rosters",
+        image: currentUser?.image ?? null,
+        isMe: true,
+        groups: [] as string[],
+      },
       rosters: formatRosters(myRosters),
     },
     ...friendRosters

@@ -1,10 +1,15 @@
 "use client"
 
+import { useSearchParams } from "next/navigation"
 import { signIn } from "next-auth/react"
 import toast from "react-hot-toast"
 import { Button } from "@/components/ui"
 
 export default function SignInPage() {
+  const searchParams = useSearchParams()
+  const rawCallbackUrl = searchParams.get("callbackUrl") ?? "/dashboard"
+  const url = new URL(rawCallbackUrl, "http://localhost")
+  const safeCallbackUrl = url.pathname + url.search
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-surface p-8">
       <h1 className="mb-2 text-4xl font-bold text-gray-100">Lost Ark Roster Manager</h1>
@@ -37,7 +42,7 @@ export default function SignInPage() {
           }
           onClick={async () => {
             try {
-              await signIn("google", { callbackUrl: "/dashboard" })
+              await signIn("google", { callbackUrl: safeCallbackUrl })
             } catch (e) {
               toast.error(`Sign in failed: ${e instanceof Error ? e.message : "Unknown error"}`)
             }
@@ -57,7 +62,7 @@ export default function SignInPage() {
           }
           onClick={async () => {
             try {
-              await signIn("discord", { callbackUrl: "/dashboard" })
+              await signIn("discord", { callbackUrl: safeCallbackUrl })
             } catch (e) {
               toast.error(`Sign in failed: ${e instanceof Error ? e.message : "Unknown error"}`)
             }

@@ -58,8 +58,7 @@ export default function ProfilePage() {
   }
 
   const saveMutation = useMutation({
-    mutationFn: (data: { name?: string; image?: string | null }) =>
-      httpClient.put<User>("/api/user/me", data),
+    mutationFn: (data: { name?: string; image?: string | null }) => httpClient.put<User>("/api/user/me", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user/me"] })
     },
@@ -85,8 +84,7 @@ export default function ProfilePage() {
     })
   }
 
-  const hasChanges =
-    name.trim() !== (user?.name ?? "") || imageUrl !== (user?.image ?? "")
+  const hasChanges = name.trim() !== (user?.name ?? "") || imageUrl !== (user?.image ?? "")
 
   if (isLoading) {
     return (
@@ -135,20 +133,14 @@ export default function ProfilePage() {
                 }}
                 placeholder="https://example.com/avatar.jpg"
               />
-              {imageError && (
-                <p className="text-xs text-danger">Failed to load image</p>
-              )}
+              {imageError && <p className="text-xs text-danger">Failed to load image</p>}
             </div>
           </div>
         </div>
 
         <div className="rounded-xl border border-gray-800 bg-surface-elevated p-6">
           <h2 className="mb-5 text-sm font-semibold uppercase tracking-wider text-gray-400">Display Name</h2>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Your display name"
-          />
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your display name" />
         </div>
 
         <div className="rounded-xl border border-gray-800 bg-surface-elevated p-6">

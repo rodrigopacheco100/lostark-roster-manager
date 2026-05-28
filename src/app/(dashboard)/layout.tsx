@@ -1,15 +1,13 @@
-import { redirect } from "next/navigation"
+import { AuthGuard } from "@/components/AuthGuard"
 import { Sidebar } from "@/components/Sidebar"
-import { auth } from "@/lib/auth"
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth()
-  if (!session?.user) redirect("/auth/signin")
-
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-surface">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto p-8">{children}</main>
-    </div>
+    <AuthGuard>
+      <div className="flex h-screen overflow-hidden bg-surface">
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto p-8">{children}</main>
+      </div>
+    </AuthGuard>
   )
 }

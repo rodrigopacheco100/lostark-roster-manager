@@ -87,14 +87,12 @@ async function main() {
         const toRemove = existing.difficulties.filter((d) => !desiredDifficultyNames.has(d.difficulty))
 
         if (toRemove.length > 0) {
-          await tx
-            .delete(raidDifficulties)
-            .where(
-              inArray(
-                raidDifficulties.id,
-                toRemove.map((d) => d.id),
-              ),
-            )
+          await tx.delete(raidDifficulties).where(
+            inArray(
+              raidDifficulties.id,
+              toRemove.map((d) => d.id),
+            ),
+          )
           console.log(`  Removed difficulties: ${toRemove.map((d) => d.difficulty).join(", ")}`)
         }
 
@@ -113,10 +111,7 @@ async function main() {
           console.log(`  Up to date: ${raid.slug}`)
         }
       } else {
-        const [inserted] = await tx
-          .insert(raids)
-          .values({ slug: raid.slug, name: raid.name })
-          .returning()
+        const [inserted] = await tx.insert(raids).values({ slug: raid.slug, name: raid.name }).returning()
 
         if (inserted) {
           await tx.insert(raidDifficulties).values(

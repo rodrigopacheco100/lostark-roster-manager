@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm"
+import { inArray, sql } from "drizzle-orm"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { db } from "@/db"
@@ -45,18 +45,19 @@ export async function POST(req: Request) {
     }
   }
 
-  await db.transaction(async (tx) => {
-    await Promise.all(
-      updates.map(({ characterId, raidDifficultyId, completed }) =>
-        tx
-          .update(characterRaids)
-          .set({ completed })
-          .where(
-            and(eq(characterRaids.characterId, characterId), eq(characterRaids.raidDifficultyId, raidDifficultyId)),
-          ),
-      ),
+  await db
+    .insert(characterRaids)
+    .values(
+      updates.map(({ characterId, raidDifficultyId, completed }) => ({
+        characterId,
+        raidDifficultyId,
+        completed,
+      })),
     )
-  })
+    .onConflictDoUpdate({
+      target: [characterRaids.characterId, characterRaids.raidDifficultyId],
+      set: { completed: sql`excluded.completed` },
+    })
 
   return NextResponse.json({ updated: updates.length })
 }

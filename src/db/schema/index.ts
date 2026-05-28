@@ -78,6 +78,7 @@ export const rosters = pgTable("rosters", {
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 })
 
@@ -90,6 +91,7 @@ export const characters = pgTable("characters", {
   rosterId: uuid("roster_id")
     .notNull()
     .references(() => rosters.id, { onDelete: "cascade" }),
+  sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 })
 

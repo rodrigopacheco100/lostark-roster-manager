@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, like, not, or, sql } from "drizzle-orm"
+import { and, asc, desc, eq, inArray, like, not, or, sql } from "drizzle-orm"
 import { db } from "@/db"
 import {
   characterRaids,
@@ -20,8 +20,10 @@ import {
 export function getRosters(userId: string) {
   return db.query.rosters.findMany({
     where: eq(rosters.userId, userId),
+    orderBy: [asc(rosters.sortOrder), asc(rosters.createdAt)],
     with: {
       characters: {
+        orderBy: [asc(characters.sortOrder), asc(characters.createdAt)],
         with: {
           characterRaids: {
             with: {
@@ -41,6 +43,7 @@ export function getRoster(id: string, userId: string) {
     where: and(eq(rosters.id, id), eq(rosters.userId, userId)),
     with: {
       characters: {
+        orderBy: [asc(characters.sortOrder), asc(characters.createdAt)],
         with: {
           characterRaids: {
             with: {
@@ -74,10 +77,33 @@ export function deleteRoster(id: string, userId: string) {
     .returning()
 }
 
+export function reorderRosters(ids: string[], userId: string) {
+  return db.transaction(async (tx) => {
+    for (let i = 0; i < ids.length; i++) {
+      await tx
+        .update(rosters)
+        .set({ sortOrder: i })
+        .where(and(eq(rosters.id, ids[i]), eq(rosters.userId, userId)))
+    }
+  })
+}
+
+export function reorderCharacters(ids: string[], rosterId: string) {
+  return db.transaction(async (tx) => {
+    for (let i = 0; i < ids.length; i++) {
+      await tx
+        .update(characters)
+        .set({ sortOrder: i })
+        .where(and(eq(characters.id, ids[i]), eq(characters.rosterId, rosterId)))
+    }
+  })
+}
+
 /* ───────── CHARACTERS ───────── */
 export function getCharacters(rosterId: string) {
   return db.query.characters.findMany({
     where: eq(characters.rosterId, rosterId),
+    orderBy: [asc(characters.sortOrder), asc(characters.createdAt)],
   })
 }
 

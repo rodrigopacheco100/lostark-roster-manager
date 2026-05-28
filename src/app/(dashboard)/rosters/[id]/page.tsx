@@ -1,11 +1,13 @@
 "use client"
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Check, Pencil, Plus, Trash2, X } from "lucide-react"
+import { ArrowLeft, Check, GripVertical, Pencil, Plus, Trash2, X } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { FloatingSaveBar } from "@/components/FloatingSaveBar"
 import { RaidCombobox } from "@/components/raid/RaidCombobox"
+import { SortableList } from "@/components/SortableList"
 import { Badge, Button, Card, Input, PageHeader, Select } from "@/components/ui"
 import { LostArkClass } from "@/db/schema"
 import { useConfirm } from "@/hooks/useConfirm"
@@ -84,6 +86,9 @@ export default function RosterDetailPage() {
   const [editItemLevel, setEditItemLevel] = useState("")
 
   const [raidComboboxCharId, setRaidComboboxCharId] = useState<string | null>(null)
+  const [reorderDirty, setReorderDirty] = useState(false)
+  const [isReordering, setIsReordering] = useState(false)
+  const workingOrderRef = useRef<string[]>([])
 
   const addCharacterMutation = useMutation({
     mutationFn: (data: { name: string; class: LostArkClass; itemLevel: number }) =>
@@ -111,6 +116,10 @@ export default function RosterDetailPage() {
   const removeRaidMutation = useMutation({
     mutationFn: ({ characterId, characterRaidId }: { characterId: string; characterRaidId: string }) =>
       httpClient.delete(`/api/characters/${characterId}/raids?characterRaidId=${characterRaidId}`),
+  })
+
+  const reorderMutation = useMutation({
+    mutationFn: (ids: string[]) => httpClient.put("/api/characters/reorder", { ids, rosterId }),
   })
 
   async function handleAddCharacter(e: React.FormEvent) {
@@ -166,6 +175,34 @@ export default function RosterDetailPage() {
     queryClient.invalidateQueries({ queryKey: [`/api/rosters/${rosterId}`] })
   }
 
+  function handleReorder(ids: string[]) {
+    workingOrderRef.current = ids
+    setReorderDirty(true)
+  }
+
+  async function handleSaveReorder() {
+    const ids = workingOrderRef.current
+    if (ids.length === 0) return
+    await promise(reorderMutation.mutateAsync(ids), {
+      loading: "Saving order...",
+      success: "Order saved!",
+      error: (err: Error) => err.message,
+    })
+    setReorderDirty(false)
+    setIsReordering(false)
+    queryClient.invalidateQueries({ queryKey: [`/api/rosters/${rosterId}`] })
+  }
+
+  function handleDiscardReorder() {
+    queryClient.invalidateQueries({ queryKey: [`/api/rosters/${rosterId}`] })
+    setReorderDirty(false)
+    setIsReordering(false)
+  }
+
+  function toggleReorder() {
+    setIsReordering((v) => !v)
+  }
+
   if (!roster) return <div className="p-8 text-gray-500">Loading...</div>
 
   return (
@@ -178,7 +215,7 @@ export default function RosterDetailPage() {
       </Link>
       <PageHeader title={roster.name} />
 
-      <form onSubmit={handleAddCharacter} className="mb-8 flex flex-wrap gap-2">
+      <form onSubmit={handleAddCharacter} className="mb-2 flex flex-wrap gap-2">
         <Input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Character name" />
         <Select
           value={newClass}
@@ -197,10 +234,23 @@ export default function RosterDetailPage() {
           Add Character
         </Button>
       </form>
+      {roster.characters.length > 0 && (
+        <div className="mb-2 mt-6">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={toggleReorder}
+            disabled={isReordering}
+            icon={<GripVertical className="h-4 w-4" />}
+          >
+            Reorder
+          </Button>
+        </div>
+      )}
 
-      <div className="space-y-3">
-        {roster.characters.map((char) => (
-          <Card key={char.id}>
+      <SortableList items={roster.characters} onReorder={handleReorder} sortable={isReordering} className="space-y-3">
+        {(char) => (
+          <Card>
             {editingChar === char.id ? (
               <div className="flex flex-wrap items-center gap-2">
                 <Input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} />
@@ -297,8 +347,16 @@ export default function RosterDetailPage() {
               </>
             )}
           </Card>
-        ))}
-      </div>
+        )}
+      </SortableList>
+      {isReordering && (
+        <FloatingSaveBar
+          onSave={handleSaveReorder}
+          onDiscard={handleDiscardReorder}
+          saving={reorderMutation.isPending}
+          canSave={reorderDirty}
+        />
+      )}
     </div>
   )
 }

@@ -1,9 +1,11 @@
 "use client"
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Check, Pencil, Plus, Sword, Trash2, X } from "lucide-react"
+import { Check, GripVertical, Pencil, Plus, Sword, Trash2, X } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useRef, useState } from "react"
+import { FloatingSaveBar } from "@/components/FloatingSaveBar"
+import { SortableList } from "@/components/SortableList"
 import { Button, Card, EmptyState, Input, PageHeader } from "@/components/ui"
 import { useConfirm } from "@/hooks/useConfirm"
 import { useToast } from "@/hooks/useToast"
@@ -26,6 +28,9 @@ export default function RostersPage() {
   const [newName, setNewName] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState("")
+  const [reorderDirty, setReorderDirty] = useState(false)
+  const [isReordering, setIsReordering] = useState(false)
+  const workingOrderRef = useRef<string[]>([])
   const { confirm } = useConfirm()
 
   const createMutation = useMutation({
@@ -38,6 +43,10 @@ export default function RostersPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => httpClient.delete(`/api/rosters/${id}`),
+  })
+
+  const reorderMutation = useMutation({
+    mutationFn: (ids: string[]) => httpClient.put("/api/rosters/reorder", { ids }),
   })
 
   async function handleCreate(e: React.FormEvent) {
@@ -80,11 +89,39 @@ export default function RostersPage() {
     queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
   }
 
+  function handleReorder(ids: string[]) {
+    workingOrderRef.current = ids
+    setReorderDirty(true)
+  }
+
+  async function handleSaveReorder() {
+    const ids = workingOrderRef.current
+    if (ids.length === 0) return
+    await promise(reorderMutation.mutateAsync(ids), {
+      loading: "Saving order...",
+      success: "Order saved!",
+      error: (err: Error) => err.message,
+    })
+    setReorderDirty(false)
+    setIsReordering(false)
+    queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
+  }
+
+  function handleDiscardReorder() {
+    queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
+    setReorderDirty(false)
+    setIsReordering(false)
+  }
+
+  function toggleReorder() {
+    setIsReordering((v) => !v)
+  }
+
   return (
     <div>
       <PageHeader title="Rosters" />
 
-      <form onSubmit={handleCreate} className="mb-8 flex gap-2">
+      <form onSubmit={handleCreate} className="mb-2 flex gap-2">
         <Input
           type="text"
           value={newName}
@@ -96,6 +133,19 @@ export default function RostersPage() {
           Create
         </Button>
       </form>
+      {rosters && rosters.length > 0 && (
+        <div className="mb-2 mt-6">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={toggleReorder}
+            disabled={isReordering}
+            icon={<GripVertical className="h-4 w-4" />}
+          >
+            Reorder
+          </Button>
+        </div>
+      )}
 
       {rosters?.length === 0 ? (
         <EmptyState
@@ -104,9 +154,9 @@ export default function RostersPage() {
           description="Create your first roster to start tracking characters and raids."
         />
       ) : (
-        <div className="space-y-3">
-          {rosters?.map((roster) => (
-            <Card key={roster.id} className="flex items-center justify-between">
+        <SortableList items={rosters ?? []} onReorder={handleReorder} sortable={isReordering} className="space-y-3">
+          {(roster) => (
+            <Card className="flex items-center justify-between">
               {editingId === roster.id ? (
                 <div className="flex flex-1 items-center gap-2">
                   <Input
@@ -159,8 +209,16 @@ export default function RostersPage() {
                 </>
               )}
             </Card>
-          ))}
-        </div>
+          )}
+        </SortableList>
+      )}
+      {isReordering && (
+        <FloatingSaveBar
+          onSave={handleSaveReorder}
+          onDiscard={handleDiscardReorder}
+          saving={reorderMutation.isPending}
+          canSave={reorderDirty}
+        />
       )}
     </div>
   )

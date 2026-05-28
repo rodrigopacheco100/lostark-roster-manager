@@ -51,7 +51,9 @@ export async function POST(req: Request) {
         tx
           .update(characterRaids)
           .set({ completed })
-          .where(and(eq(characterRaids.characterId, characterId), eq(characterRaids.raidDifficultyId, raidDifficultyId))),
+          .where(
+            and(eq(characterRaids.characterId, characterId), eq(characterRaids.raidDifficultyId, raidDifficultyId)),
+          ),
       ),
     )
   })

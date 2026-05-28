@@ -60,7 +60,13 @@ export function useRaidToggleQueue() {
         success: "Raids updated!",
         error: (err: Error) => err.message,
       })
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      await queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      for (const entry of queueRef.current.values()) {
+        queryClient.setQueryData<DashboardData>(["dashboard"], (old) => {
+          if (!old) return old
+          return flipInCache(old, entry.characterId, entry.raidDifficultyId, entry.completed)
+        })
+      }
       isTogglingRef.current = false
     } catch {
       if (prevSnapshot) {

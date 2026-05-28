@@ -46,12 +46,14 @@ export async function POST(req: Request) {
   }
 
   await db.transaction(async (tx) => {
-    for (const { characterId, raidDifficultyId, completed } of updates) {
-      await tx
-        .update(characterRaids)
-        .set({ completed })
-        .where(and(eq(characterRaids.characterId, characterId), eq(characterRaids.raidDifficultyId, raidDifficultyId)))
-    }
+    await Promise.all(
+      updates.map(({ characterId, raidDifficultyId, completed }) =>
+        tx
+          .update(characterRaids)
+          .set({ completed })
+          .where(and(eq(characterRaids.characterId, characterId), eq(characterRaids.raidDifficultyId, raidDifficultyId))),
+      ),
+    )
   })
 
   return NextResponse.json({ updated: updates.length })

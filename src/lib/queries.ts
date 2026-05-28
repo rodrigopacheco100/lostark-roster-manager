@@ -217,8 +217,8 @@ export function getAllRaidsWithDifficulties() {
   })
 }
 
-export function createRaid(name: string) {
-  return db.insert(raids).values({ name }).returning()
+export function createRaid(slug: string, name: string) {
+  return db.insert(raids).values({ slug, name }).returning()
 }
 
 export function deleteRaid(id: string) {

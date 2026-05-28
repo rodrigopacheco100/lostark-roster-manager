@@ -24,7 +24,7 @@ export function RaidCheckbox({
       } ${isOwner ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}
     >
       {raid.completed ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-      {raid.raidName} ({raid.difficulty})
+      {raid.raidName} {raid.difficulty}
     </button>
   )
 }

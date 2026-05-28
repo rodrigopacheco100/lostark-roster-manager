@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm"
-import { boolean, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core"
+import { boolean, index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core"
 
 /* ───────── ENUMS ───────── */
 export enum FriendRequestStatus {
@@ -166,11 +166,19 @@ export const groupBans = pgTable(
 )
 
 /* ───────── RAIDS (global) ───────── */
-export const raids = pgTable("raids", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  name: text("name").notNull().unique(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-})
+export const raids = pgTable(
+  "raids",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    slug: text("slug").notNull().unique(),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    slugIdx: index("raid_slug_idx").on(table.slug),
+    nameIdx: index("raid_name_idx").on(table.name),
+  }),
+)
 
 /* ───────── RAID DIFFICULTIES ───────── */
 export const raidDifficulties = pgTable(

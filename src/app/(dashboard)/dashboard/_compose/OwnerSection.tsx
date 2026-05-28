@@ -74,7 +74,7 @@ export function OwnerSection({ group, enqueue }: { group: OwnerRosters; enqueue:
               g.completed === g.total ? "bg-green-900/40 text-green-400" : "bg-surface-hover text-gray-400"
             }`}
           >
-            {g.completed}/{g.total} {g.raidName} ({g.difficulty})
+            {g.completed}/{g.total} {g.raidName} {g.difficulty}
           </span>
         ))}
       </div>

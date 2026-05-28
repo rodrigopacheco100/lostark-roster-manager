@@ -1,0 +1,71 @@
+import { LostArkClass } from "@/db/schema"
+
+export enum AGSLostArkClass {
+  Berserker = "berserker",
+  Destroyer = "destroyer",
+  Gunlancer = "warlord",
+  Paladin = "holyknight",
+  Slayer = "berserker_female",
+  Valkyrie = "holyknight_female",
+  Arcanist = "arcana",
+  Summoner = "summoner",
+  Bard = "bard",
+  Sorceress = "elemental_master",
+  Wardancer = "battle_master",
+  Scrapper = "infighter",
+  Soulfist = "force_master",
+  Glaivier = "lance_master",
+  Striker = "battle_master_male",
+  Breaker = "infighter_male",
+  Deathblade = "blade",
+  Shadowhunter = "demonic",
+  Reaper = "reaper",
+  Souleater = "soul_eater",
+  Sharpshooter = "hawk_eye",
+  Deadeye = "devil_hunter",
+  Artillerist = "blaster",
+  Machinist = "scouter",
+  Gunslinger = "devil_hunter_female",
+  Artist = "yinyangshi",
+  Aeromancer = "weather_artist",
+  Wildsoul = "alchemist",
+  GuardianKnight = "dragon_knight",
+}
+
+const classMap: Record<string, LostArkClass> = {
+  [AGSLostArkClass.Berserker]: LostArkClass.Berserker,
+  [AGSLostArkClass.Destroyer]: LostArkClass.Destroyer,
+  [AGSLostArkClass.Gunlancer]: LostArkClass.Gunlancer,
+  [AGSLostArkClass.Paladin]: LostArkClass.Paladin,
+  [AGSLostArkClass.Slayer]: LostArkClass.Slayer,
+  [AGSLostArkClass.Valkyrie]: LostArkClass.Valkyrie,
+  [AGSLostArkClass.Arcanist]: LostArkClass.Arcanist,
+  [AGSLostArkClass.Summoner]: LostArkClass.Summoner,
+  [AGSLostArkClass.Bard]: LostArkClass.Bard,
+  [AGSLostArkClass.Sorceress]: LostArkClass.Sorceress,
+  [AGSLostArkClass.Wardancer]: LostArkClass.Wardancer,
+  [AGSLostArkClass.Scrapper]: LostArkClass.Scrapper,
+  [AGSLostArkClass.Soulfist]: LostArkClass.Soulfist,
+  [AGSLostArkClass.Glaivier]: LostArkClass.Glaivier,
+  [AGSLostArkClass.Striker]: LostArkClass.Striker,
+  [AGSLostArkClass.Breaker]: LostArkClass.Breaker,
+  [AGSLostArkClass.Deathblade]: LostArkClass.Deathblade,
+  [AGSLostArkClass.Shadowhunter]: LostArkClass.Shadowhunter,
+  [AGSLostArkClass.Reaper]: LostArkClass.Reaper,
+  [AGSLostArkClass.Souleater]: LostArkClass.Souleater,
+  [AGSLostArkClass.Sharpshooter]: LostArkClass.Sharpshooter,
+  [AGSLostArkClass.Deadeye]: LostArkClass.Deadeye,
+  [AGSLostArkClass.Artillerist]: LostArkClass.Artillerist,
+  [AGSLostArkClass.Machinist]: LostArkClass.Machinist,
+  [AGSLostArkClass.Gunslinger]: LostArkClass.Gunslinger,
+  [AGSLostArkClass.Artist]: LostArkClass.Artist,
+  [AGSLostArkClass.Aeromancer]: LostArkClass.Aeromancer,
+  [AGSLostArkClass.Wildsoul]: LostArkClass.Wildsoul,
+  [AGSLostArkClass.GuardianKnight]: LostArkClass.GuardianKnight,
+}
+
+const DEFAULT_CLASS = LostArkClass.Striker
+
+export function mapAGSClassToLostArk(agsClass: string): LostArkClass {
+  return classMap[agsClass.toLowerCase()] ?? DEFAULT_CLASS
+}

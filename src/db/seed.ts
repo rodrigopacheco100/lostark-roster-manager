@@ -17,6 +17,7 @@ const raidData: RaidDataItem[] = [
     slug: "act-1-aegir",
     name: "Aegir",
     difficulties: [
+      { difficulty: "Solo", minIlvl: 1660 },
       { difficulty: "Normal", minIlvl: 1660 },
       { difficulty: "Hard", minIlvl: 1680 },
     ],
@@ -25,6 +26,7 @@ const raidData: RaidDataItem[] = [
     slug: "act-2-brelshaza",
     name: "Brelshaza",
     difficulties: [
+      { difficulty: "Solo", minIlvl: 1670 },
       { difficulty: "Normal", minIlvl: 1670 },
       { difficulty: "Hard", minIlvl: 1690 },
     ],
@@ -33,6 +35,7 @@ const raidData: RaidDataItem[] = [
     slug: "act-3-mordum",
     name: "Mordum",
     difficulties: [
+      { difficulty: "Solo", minIlvl: 1680 },
       { difficulty: "Normal", minIlvl: 1680 },
       { difficulty: "Hard", minIlvl: 1700 },
     ],

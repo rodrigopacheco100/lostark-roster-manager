@@ -43,6 +43,13 @@
       "when": 1779937532156,
       "tag": "0005_supreme_cloak",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779996800617,
+      "tag": "0006_ags_api_roster",
+      "breakpoints": true
     }
   ]
 }

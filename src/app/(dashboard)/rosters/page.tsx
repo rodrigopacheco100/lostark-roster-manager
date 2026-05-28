@@ -1,10 +1,11 @@
 "use client"
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Check, GripVertical, Pencil, Plus, Sword, Trash2, X } from "lucide-react"
+import { Check, GripVertical, Pencil, Plus, Sword, Trash2, Upload, X } from "lucide-react"
 import Link from "next/link"
 import { useRef, useState } from "react"
 import { FloatingSaveBar } from "@/components/FloatingSaveBar"
+import { ImportRosterModal } from "@/components/ImportRosterModal"
 import { SortableList } from "@/components/SortableList"
 import { Button, Card, EmptyState, Input, PageHeader } from "@/components/ui"
 import { useConfirm } from "@/hooks/useConfirm"
@@ -44,6 +45,8 @@ export default function RostersPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => httpClient.delete(`/api/rosters/${id}`),
   })
+
+  const [importModalOpen, setImportModalOpen] = useState(false)
 
   const reorderMutation = useMutation({
     mutationFn: (ids: string[]) => httpClient.put("/api/rosters/reorder", { ids }),
@@ -131,6 +134,14 @@ export default function RostersPage() {
         />
         <Button type="submit" icon={<Plus className="h-4 w-4" />}>
           Create
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          icon={<Upload className="h-4 w-4" />}
+          onClick={() => setImportModalOpen(true)}
+        >
+          Import
         </Button>
       </form>
       {rosters && rosters.length > 0 && (
@@ -220,6 +231,7 @@ export default function RostersPage() {
           canSave={reorderDirty}
         />
       )}
+      <ImportRosterModal isOpen={importModalOpen} onClose={() => setImportModalOpen(false)} />
     </div>
   )
 }

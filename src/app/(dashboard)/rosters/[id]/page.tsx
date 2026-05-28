@@ -1,10 +1,11 @@
 "use client"
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Check, GripVertical, Pencil, Plus, Trash2, X } from "lucide-react"
+import { ArrowLeft, Check, GripVertical, Pencil, Plus, Trash2, Upload, X } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
+import { AddRosterCharactersModal } from "@/components/AddRosterCharactersModal"
 import { FloatingSaveBar } from "@/components/FloatingSaveBar"
 import { RaidCombobox } from "@/components/raid/RaidCombobox"
 import { SortableList } from "@/components/SortableList"
@@ -42,6 +43,7 @@ type Character = {
 type Roster = {
   id: string
   name: string
+  rosterGuid?: string | null
   characters: Character[]
 }
 
@@ -86,6 +88,7 @@ export default function RosterDetailPage() {
   const [editItemLevel, setEditItemLevel] = useState("")
 
   const [raidComboboxCharId, setRaidComboboxCharId] = useState<string | null>(null)
+  const [importModalOpen, setImportModalOpen] = useState(false)
   const [reorderDirty, setReorderDirty] = useState(false)
   const [isReordering, setIsReordering] = useState(false)
   const workingOrderRef = useRef<string[]>([])
@@ -233,6 +236,16 @@ export default function RosterDetailPage() {
         <Button type="submit" icon={<Plus className="h-4 w-4" />}>
           Add Character
         </Button>
+        {roster.rosterGuid && (
+          <Button
+            type="button"
+            variant="secondary"
+            icon={<Upload className="h-4 w-4" />}
+            onClick={() => setImportModalOpen(true)}
+          >
+            Import Characters
+          </Button>
+        )}
       </form>
       {roster.characters.length > 0 && (
         <div className="mb-2 mt-6">
@@ -357,6 +370,7 @@ export default function RosterDetailPage() {
           canSave={reorderDirty}
         />
       )}
+      <AddRosterCharactersModal rosterId={rosterId} isOpen={importModalOpen} onClose={() => setImportModalOpen(false)} />
     </div>
   )
 }

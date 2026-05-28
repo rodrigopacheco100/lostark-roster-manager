@@ -78,6 +78,7 @@ export const rosters = pgTable("rosters", {
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  rosterGuid: text("roster_guid"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 })
@@ -88,6 +89,7 @@ export const characters = pgTable("characters", {
   name: text("name").notNull(),
   class: text("class").$type<LostArkClass>().notNull(),
   itemLevel: integer("item_level").notNull(),
+  characterGuid: text("character_guid"),
   rosterId: uuid("roster_id")
     .notNull()
     .references(() => rosters.id, { onDelete: "cascade" }),

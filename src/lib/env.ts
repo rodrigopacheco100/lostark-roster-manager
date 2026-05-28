@@ -11,6 +11,7 @@ const envSchema = z.object({
   AUTH_DISCORD_ID: z.string().min(1, "AUTH_DISCORD_ID is required"),
   AUTH_DISCORD_SECRET: z.string().min(1, "AUTH_DISCORD_SECRET is required"),
   RESET_API_KEY: z.string().min(1, "RESET_API_KEY is required"),
+  AGS_API_KEY: z.string().default(""),
   NEXTAUTH_URL: z.string().default("http://localhost:3000"),
 })
 

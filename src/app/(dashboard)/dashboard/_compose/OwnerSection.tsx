@@ -81,7 +81,10 @@ export function OwnerSection({ group, enqueue }: { group: OwnerRosters; enqueue:
       {!collapsed && (
         <div className="flex flex-wrap gap-3">
           {group.rosters.map((roster) => (
-            <div key={roster.rosterId} className="w-full sm:min-w-[620px] sm:flex-1 rounded-lg border border-gray-800 bg-surface-elevated">
+            <div
+              key={roster.rosterId}
+              className="w-full sm:min-w-[620px] sm:flex-1 rounded-lg border border-gray-800 bg-surface-elevated"
+            >
               <RosterDivider name={roster.rosterName} characterCount={roster.totalCharacters} />
               <div className="pb-2">
                 <Table.Root>

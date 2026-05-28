@@ -1,7 +1,8 @@
 "use client"
 
 import { ChevronDown, ChevronRight } from "lucide-react"
-import { useMemo, useState } from "react"
+import Image from "next/image"
+import { useMemo, useRef, useState } from "react"
 import { mappedIconsByClass } from "@/assets/classes"
 import { Table } from "@/components/ui"
 import type { ToggleEntry } from "@/hooks/useRaidToggleQueue"
@@ -12,6 +13,12 @@ import { RosterDivider } from "./RosterDivider"
 export function OwnerSection({ group, enqueue }: { group: OwnerRosters; enqueue: (entry: ToggleEntry) => void }) {
   const [collapsed, setCollapsed] = useState(true)
   const isOwner = group.owner.isMe
+  const [avatarError, setAvatarError] = useState(false)
+  const prevImageRef = useRef(group.owner.image)
+  if (prevImageRef.current !== group.owner.image) {
+    prevImageRef.current = group.owner.image
+    setAvatarError(false)
+  }
 
   const raidGroups = useMemo(() => {
     const groups = new Map<string, { raidName: string; difficulty: string; total: number; completed: number }>()
@@ -36,6 +43,21 @@ export function OwnerSection({ group, enqueue }: { group: OwnerRosters; enqueue:
           <ChevronRight className="h-5 w-5 shrink-0 text-gray-500" />
         ) : (
           <ChevronDown className="h-5 w-5 shrink-0 text-gray-500" />
+        )}
+        {group.owner.image && !avatarError ? (
+          <Image
+            src={group.owner.image}
+            alt=""
+            width={24}
+            height={24}
+            className="h-6 w-6 shrink-0 rounded-full object-cover"
+            unoptimized
+            onError={() => setAvatarError(true)}
+          />
+        ) : (
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-hover text-xs font-medium text-gray-500">
+            {group.owner.name[0]?.toUpperCase() ?? "?"}
+          </span>
         )}
         <h2 className="text-xl font-semibold text-gray-100">
           {group.owner.name}

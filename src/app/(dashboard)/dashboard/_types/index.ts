@@ -28,6 +28,7 @@ export type RosterData = {
 export type OwnerInfo = {
   id: string
   name: string
+  image: string | null
   isMe: boolean
   groups?: string[]
 }

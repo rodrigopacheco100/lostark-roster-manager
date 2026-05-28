@@ -161,6 +161,7 @@ export function RaidCombobox({ character, allRaids, rosterId, onClose }: RaidCom
 
   return (
     <div className="relative">
+      {/** biome-ignore lint/a11y/useSemanticElements: This component is visually a button */}
       <div
         ref={triggerRef}
         role="button"

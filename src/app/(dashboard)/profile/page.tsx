@@ -1,46 +1,168 @@
-import { eq } from "drizzle-orm"
+"use client"
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Loader2, Save } from "lucide-react"
 import Image from "next/image"
-import { redirect } from "next/navigation"
-import { Card, PageHeader } from "@/components/ui"
-import { db } from "@/db"
-import { users } from "@/db/schema"
-import { auth } from "@/lib/auth"
+import { useState } from "react"
+import { z } from "zod"
+import { Button, Input, PageHeader } from "@/components/ui"
+import { useToast } from "@/hooks/useToast"
+import { httpClient } from "@/lib/api"
 
-export default async function ProfilePage() {
-  const session = await auth()
-  if (!session?.user) redirect("/auth/signin")
+const imageExtRe = /\.(jpg|jpeg|png|gif|webp|svg|bmp|avif|ico)(\?.*)?$/i
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, session.user.id),
+function isValidImageUrl(v: string) {
+  if (v === "") return true
+  try {
+    new URL(v)
+  } catch {
+    return false
+  }
+  return imageExtRe.test(v)
+}
+
+const profileSchema = z.object({
+  name: z.string().min(1, "Name must be non-empty"),
+  image: z
+    .string()
+    .refine(isValidImageUrl, "Must be a valid image URL ending with .jpg, .png, .gif, .webp, etc")
+    .optional(),
+})
+
+type User = {
+  id: string
+  name: string
+  email: string
+  image: string | null
+}
+
+export default function ProfilePage() {
+  const queryClient = useQueryClient()
+  const { promise, toast } = useToast()
+
+  const { data: user, isLoading } = useQuery<User>({
+    queryKey: ["/api/user/me"],
+    queryFn: () => httpClient.get<User>("/api/user/me"),
   })
+
+  const [name, setName] = useState("")
+  const [imageUrl, setImageUrl] = useState("")
+  const [imageError, setImageError] = useState(false)
+  const [initialized, setInitialized] = useState(false)
+
+  if (user && !initialized) {
+    setName(user.name)
+    setImageUrl(user.image ?? "")
+    setImageError(false)
+    setInitialized(true)
+  }
+
+  const saveMutation = useMutation({
+    mutationFn: (data: { name?: string; image?: string | null }) =>
+      httpClient.put<User>("/api/user/me", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user/me"] })
+    },
+  })
+
+  async function handleSave() {
+    const parsed = profileSchema.safeParse({ name: name.trim(), image: imageUrl })
+    if (!parsed.success) {
+      toast(parsed.error.issues.map((i) => i.message).join(", "), "error")
+      return
+    }
+
+    const updates: { name?: string; image?: string | null } = {}
+    if (parsed.data.name !== user?.name) updates.name = parsed.data.name
+    if (imageUrl !== (user?.image ?? "")) updates.image = imageUrl || null
+
+    if (Object.keys(updates).length === 0) return
+
+    await promise(saveMutation.mutateAsync(updates), {
+      loading: "Saving profile...",
+      success: "Profile updated!",
+      error: (err: Error) => err.message,
+    })
+  }
+
+  const hasChanges =
+    name.trim() !== (user?.name ?? "") || imageUrl !== (user?.image ?? "")
+
+  if (isLoading) {
+    return (
+      <div>
+        <PageHeader title="Profile" />
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
       <PageHeader title="Profile" />
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          {session.user.image && (
-            <Image
-              src={session.user.image}
-              alt="Avatar"
-              width={64}
-              height={64}
-              className="h-16 w-16 rounded-full ring-2 ring-surface-hover"
-              unoptimized
-            />
-          )}
-          <div>
-            <p className="text-lg font-medium text-gray-100">{session.user.name}</p>
-            <p className="text-gray-500">{session.user.email}</p>
+      <div className="space-y-6 max-w-xl">
+        <div className="rounded-xl border border-gray-800 bg-surface-elevated p-6">
+          <h2 className="mb-5 text-sm font-semibold uppercase tracking-wider text-gray-400">Avatar</h2>
+          <div className="flex items-start gap-6">
+            <div className="shrink-0">
+              {imageUrl && !imageError ? (
+                <Image
+                  src={imageUrl}
+                  alt="Avatar"
+                  width={96}
+                  height={96}
+                  className="h-24 w-24 rounded-full ring-2 ring-surface-hover object-cover"
+                  unoptimized
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-surface-hover ring-2 ring-surface-hover">
+                  <span className="text-4xl font-bold text-gray-500">
+                    {(name || user?.name || "?")[0].toUpperCase()}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="flex-1 space-y-3">
+              <Input
+                label="Avatar URL"
+                value={imageUrl}
+                onChange={(e) => {
+                  setImageUrl(e.target.value)
+                  setImageError(false)
+                }}
+                placeholder="https://example.com/avatar.jpg"
+              />
+              {imageError && (
+                <p className="text-xs text-danger">Failed to load image</p>
+              )}
+            </div>
           </div>
         </div>
 
-        {user?.friendCode && (
-          <Card className="inline-flex flex-col gap-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Friend Code</p>
-            <p className="font-mono text-2xl font-bold text-blue-400">{user.friendCode}</p>
-          </Card>
-        )}
+        <div className="rounded-xl border border-gray-800 bg-surface-elevated p-6">
+          <h2 className="mb-5 text-sm font-semibold uppercase tracking-wider text-gray-400">Display Name</h2>
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your display name"
+          />
+        </div>
+
+        <div className="rounded-xl border border-gray-800 bg-surface-elevated p-6">
+          <h2 className="mb-5 text-sm font-semibold uppercase tracking-wider text-gray-400">Email</h2>
+          <p className="text-gray-300">{user?.email}</p>
+        </div>
+
+        <Button
+          onClick={handleSave}
+          disabled={!hasChanges || saveMutation.isPending || !name.trim()}
+          icon={<Save className="h-4 w-4" />}
+        >
+          {saveMutation.isPending ? "Saving..." : "Save Changes"}
+        </Button>
       </div>
     </div>
   )

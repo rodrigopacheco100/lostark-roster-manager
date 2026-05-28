@@ -1,4 +1,7 @@
+import { eq } from "drizzle-orm"
 import { NextResponse } from "next/server"
+import { db } from "@/db"
+import { users } from "@/db/schema"
 import { auth } from "@/lib/auth"
 import { getFriendshipsBothDirections, getGroupsWithMembers, getRosters } from "@/lib/queries"
 
@@ -32,7 +35,8 @@ export async function GET() {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const [myRosters, friendships, groupMemberships] = await Promise.all([
+  const [currentUser, myRosters, friendships, groupMemberships] = await Promise.all([
+    db.query.users.findFirst({ where: eq(users.id, session.user.id) }),
     getRosters(session.user.id),
     getFriendshipsBothDirections(session.user.id),
     getGroupsWithMembers(session.user.id),
@@ -40,13 +44,16 @@ export async function GET() {
 
   const friendIds = new Set<string>()
   const friendNames = new Map<string, string>()
+  const friendImages = new Map<string, string | null>()
   for (const f of friendships) {
     if (f.userId === session.user.id) {
       friendIds.add(f.friendId)
       friendNames.set(f.friendId, f.friend.name)
+      friendImages.set(f.friendId, f.friend.image)
     } else {
       friendIds.add(f.userId)
       friendNames.set(f.userId, f.user.name)
+      friendImages.set(f.userId, f.user.image)
     }
   }
 
@@ -68,6 +75,7 @@ export async function GET() {
   const friendRostersPromises = Array.from(friendIds).map(async (friendId) => ({
     ownerId: friendId,
     ownerName: friendNames.get(friendId) ?? "Friend",
+    ownerImage: friendImages.get(friendId) ?? null,
     groups: ownerGroups.get(friendId) ?? [],
     rosters: formatRosters(await getRosters(friendId)),
   }))
@@ -78,6 +86,7 @@ export async function GET() {
     .map(async (memberId) => ({
       ownerId: memberId,
       ownerName: memberId,
+      ownerImage: null as string | null,
       groups: ownerGroups.get(memberId) ?? [],
       rosters: null as Awaited<ReturnType<typeof formatRosters>> | null,
     }))
@@ -88,23 +97,24 @@ export async function GET() {
     entry.rosters = formatRosters(rosters)
     const member = groupMemberships.flatMap((gm) => gm.group.members).find((m) => m.user.id === entry.ownerId)
     entry.ownerName = member?.user.name ?? "Unknown"
+    entry.ownerImage = member?.user.image ?? null
   }
 
   const allRosters = [
     {
-      owner: { id: session.user.id, name: "My Rosters", isMe: true, groups: [] as string[] },
+      owner: { id: session.user.id, name: "My Rosters", image: currentUser?.image ?? null, isMe: true, groups: [] as string[] },
       rosters: formatRosters(myRosters),
     },
     ...friendRosters
       .filter((fr) => fr.rosters.length > 0)
       .map((fr) => ({
-        owner: { id: fr.ownerId, name: fr.ownerName, isMe: false, groups: fr.groups },
+        owner: { id: fr.ownerId, name: fr.ownerName, image: fr.ownerImage, isMe: false, groups: fr.groups },
         rosters: fr.rosters,
       })),
     ...groupRosterEntries
       .filter((ge) => ge.rosters && ge.rosters.length > 0)
       .map((ge) => ({
-        owner: { id: ge.ownerId, name: ge.ownerName, isMe: false, groups: ge.groups },
+        owner: { id: ge.ownerId, name: ge.ownerName, image: ge.ownerImage, isMe: false, groups: ge.groups },
         rosters: ge.rosters!,
       })),
   ]

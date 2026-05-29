@@ -3,13 +3,25 @@ import { eq, inArray } from "drizzle-orm"
 import { db } from "./index"
 import { raidDifficulties, raids } from "./schema"
 
+export type RaidSlug =
+  | "act-1-aegir"
+  | "act-2-brelshaza"
+  | "act-3-mordum"
+  | "act-4-armoche"
+  | "final-act-kazeros"
+  | "shadow-raid-serca"
+
+type DifficultyItem = {
+  difficulty: string
+  minIlvl: number
+  loaLogsBossName?: string
+  loaLogsDifficulty?: string
+}
+
 type RaidDataItem = {
-  slug: string
+  slug: RaidSlug
   name: string
-  difficulties: {
-    difficulty: string
-    minIlvl: number
-  }[]
+  difficulties: DifficultyItem[]
 }
 
 const raidData: RaidDataItem[] = [
@@ -26,9 +38,18 @@ const raidData: RaidDataItem[] = [
     slug: "act-2-brelshaza",
     name: "Brelshaza",
     difficulties: [
-      { difficulty: "Solo", minIlvl: 1670 },
-      { difficulty: "Normal", minIlvl: 1670 },
-      { difficulty: "Hard", minIlvl: 1690 },
+      {
+        difficulty: "Solo",
+        minIlvl: 1670,
+      },
+      {
+        difficulty: "Normal",
+        minIlvl: 1670,
+      },
+      {
+        difficulty: "Hard",
+        minIlvl: 1690,
+      },
     ],
   },
   {
@@ -44,25 +65,40 @@ const raidData: RaidDataItem[] = [
     slug: "act-4-armoche",
     name: "Armoche",
     difficulties: [
-      { difficulty: "Normal", minIlvl: 1700 },
-      { difficulty: "Hard", minIlvl: 1720 },
+      {
+        difficulty: "Normal",
+        minIlvl: 1700,
+        loaLogsBossName: "Armoche, Sentinel of the Abyss",
+        loaLogsDifficulty: "Normal",
+      },
+      {
+        difficulty: "Hard",
+        minIlvl: 1720,
+        loaLogsBossName: "Armoche, Sentinel of the Abyss",
+        loaLogsDifficulty: "Hard",
+      },
     ],
   },
   {
     slug: "final-act-kazeros",
     name: "Kazeros",
     difficulties: [
-      { difficulty: "Normal", minIlvl: 1710 },
-      { difficulty: "Hard", minIlvl: 1730 },
+      { difficulty: "Normal", minIlvl: 1710, loaLogsBossName: "Archdemon Kazeros", loaLogsDifficulty: "Normal" },
+      { difficulty: "Hard", minIlvl: 1730, loaLogsBossName: "Death Incarnate Kazeros", loaLogsDifficulty: "Hard" },
     ],
   },
   {
     slug: "shadow-raid-serca",
     name: "Serca",
     difficulties: [
-      { difficulty: "Normal", minIlvl: 1710 },
-      { difficulty: "Hard", minIlvl: 1730 },
-      { difficulty: "Nightmare", minIlvl: 1740 },
+      { difficulty: "Normal", minIlvl: 1710, loaLogsBossName: "Corvus Tul Rak", loaLogsDifficulty: "Normal" },
+      { difficulty: "Hard", minIlvl: 1730, loaLogsBossName: "Corvus Tul Rak", loaLogsDifficulty: "Hard" },
+      {
+        difficulty: "Nightmare",
+        minIlvl: 1740,
+        loaLogsBossName: "Corvus Tul Rak",
+        loaLogsDifficulty: "Nightmare",
+      },
     ],
   },
 ]
@@ -78,9 +114,11 @@ async function main() {
       })
 
       if (existing) {
-        if (existing.name !== raid.name) {
-          await tx.update(raids).set({ name: raid.name }).where(eq(raids.id, existing.id))
-          console.log(`  Updated name: ${raid.slug} → "${raid.name}"`)
+        const raidUpdates: Partial<typeof raids.$inferInsert> = {}
+        if (existing.name !== raid.name) raidUpdates.name = raid.name
+        if (Object.keys(raidUpdates).length > 0) {
+          await tx.update(raids).set(raidUpdates).where(eq(raids.id, existing.id))
+          console.log(`  Updated: ${raid.slug}`)
         }
 
         const existingDifficultyNames = new Set(existing.difficulties.map((d) => d.difficulty))
@@ -105,9 +143,26 @@ async function main() {
               raidId: existing.id,
               difficulty: d.difficulty,
               minIlvl: d.minIlvl,
+              loaLogsBossName: d.loaLogsBossName ?? null,
+              loaLogsDifficulty: d.loaLogsDifficulty ?? null,
             })),
           )
           console.log(`  Added difficulties: ${toAdd.map((d) => d.difficulty).join(", ")}`)
+        }
+
+        for (const diff of raid.difficulties) {
+          const existingDiff = existing.difficulties.find((d) => d.difficulty === diff.difficulty)
+          if (existingDiff) {
+            const updates: Record<string, string | number | null> = {}
+            if (diff.loaLogsBossName !== undefined && existingDiff.loaLogsBossName !== diff.loaLogsBossName)
+              updates.loaLogsBossName = diff.loaLogsBossName ?? null
+            if (diff.loaLogsDifficulty !== undefined && existingDiff.loaLogsDifficulty !== diff.loaLogsDifficulty)
+              updates.loaLogsDifficulty = diff.loaLogsDifficulty ?? null
+            if (Object.keys(updates).length > 0) {
+              await tx.update(raidDifficulties).set(updates).where(eq(raidDifficulties.id, existingDiff.id))
+              console.log(`  Updated difficulty: ${raid.slug} / ${diff.difficulty}`)
+            }
+          }
         }
 
         if (toAdd.length === 0 && toRemove.length === 0 && existing.name === raid.name) {
@@ -122,6 +177,8 @@ async function main() {
               raidId: inserted.id,
               difficulty: d.difficulty,
               minIlvl: d.minIlvl,
+              loaLogsBossName: d.loaLogsBossName ?? null,
+              loaLogsDifficulty: d.loaLogsDifficulty ?? null,
             })),
           )
           console.log(`  Created: ${raid.name} (${raid.difficulties.length} difficulties)`)

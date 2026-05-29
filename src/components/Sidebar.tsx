@@ -16,6 +16,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
 import { useCallback, useEffect, useState } from "react"
+import { LoaLogsIcon } from "./LoaLogsIcon"
 
 const navGroups = [
   {
@@ -23,6 +24,7 @@ const navGroups = [
     links: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/rosters", label: "Rosters", icon: Sword },
+      { href: "/loa-logs", label: "Loa Logs", icon: LoaLogsIcon },
     ],
   },
   {

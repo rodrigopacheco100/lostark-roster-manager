@@ -192,6 +192,8 @@ export const raidDifficulties = pgTable(
       .references(() => raids.id, { onDelete: "cascade" }),
     difficulty: text("difficulty").notNull(),
     minIlvl: integer("min_ilvl").notNull(),
+    loaLogsBossName: text("loa_logs_boss_name"),
+    loaLogsDifficulty: text("loa_logs_difficulty"),
   },
   (table) => ({
     uniqueRaidDifficulty: uniqueIndex("raid_diff_idx").on(table.raidId, table.difficulty),

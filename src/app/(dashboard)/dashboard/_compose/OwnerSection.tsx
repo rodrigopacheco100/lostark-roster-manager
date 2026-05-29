@@ -20,10 +20,7 @@ export function OwnerSection({ group, enqueue }: { group: OwnerRosters; enqueue:
     setAvatarError(false)
   }
 
-  const totalRaids = useMemo(
-    () => group.rosters.reduce((s, r) => s + r.totalRaidsAssigned, 0),
-    [group.rosters],
-  )
+  const totalRaids = useMemo(() => group.rosters.reduce((s, r) => s + r.totalRaidsAssigned, 0), [group.rosters])
   const totalCompleted = useMemo(
     () =>
       group.rosters.reduce(
@@ -52,7 +49,11 @@ export function OwnerSection({ group, enqueue }: { group: OwnerRosters; enqueue:
 
   return (
     <div className="rounded-lg border border-gray-800 bg-surface p-3">
-      <button type="button" onClick={() => setCollapsed(!collapsed)} className="mb-2 flex w-full items-center justify-between">
+      <button
+        type="button"
+        onClick={() => setCollapsed(!collapsed)}
+        className="mb-2 flex w-full items-center justify-between"
+      >
         <span className="flex items-center gap-2">
           {collapsed ? (
             <ChevronRight className="h-5 w-5 shrink-0 text-gray-500" />

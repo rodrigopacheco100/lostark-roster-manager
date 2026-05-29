@@ -370,7 +370,11 @@ export default function RosterDetailPage() {
           canSave={reorderDirty}
         />
       )}
-      <AddRosterCharactersModal rosterId={rosterId} isOpen={importModalOpen} onClose={() => setImportModalOpen(false)} />
+      <AddRosterCharactersModal
+        rosterId={rosterId}
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+      />
     </div>
   )
 }

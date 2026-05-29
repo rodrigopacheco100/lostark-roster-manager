@@ -5,8 +5,8 @@ import { Loader2, Upload } from "lucide-react"
 import { useEffect, useState } from "react"
 import { mappedIconsByClass } from "@/assets/classes"
 import { Button, Modal } from "@/components/ui"
+import type { LostArkClass } from "@/db/schema"
 import { useToast } from "@/hooks/useToast"
-import { LostArkClass } from "@/db/schema"
 import { httpClient } from "@/lib/api"
 
 interface PreviewCharacter {
@@ -42,17 +42,15 @@ export function AddRosterCharactersModal({ rosterId, isOpen, onClose }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const previewMutation = useMutation({
-    mutationFn: () =>
-      httpClient.post<PreviewResponse>(`/api/rosters/${rosterId}/characters/preview-by-guid`),
+    mutationFn: () => httpClient.post<PreviewResponse>(`/api/rosters/${rosterId}/characters/preview-by-guid`),
     onSuccess: (data) => {
       setSelected(new Set())
     },
   })
 
   const importMutation = useMutation({
-    mutationFn: (data: {
-      characters: { guid: string; name: string; agsClass: string; itemLevel: number }[]
-    }) => httpClient.post<BulkResponse>(`/api/rosters/${rosterId}/characters/bulk`, data),
+    mutationFn: (data: { characters: { guid: string; name: string; agsClass: string; itemLevel: number }[] }) =>
+      httpClient.post<BulkResponse>(`/api/rosters/${rosterId}/characters/bulk`, data),
   })
 
   function handleClose() {

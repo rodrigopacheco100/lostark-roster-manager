@@ -5,23 +5,48 @@ import { db } from "@/db"
 import { users } from "@/db/schema"
 import { auth } from "@/lib/auth"
 
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/svg+xml",
+  "image/bmp",
+  "image/avif",
+  "image/x-icon",
+  "image/vnd.microsoft.icon",
+]
 const imageExtRe = /\.(jpg|jpeg|png|gif|webp|svg|bmp|avif|ico)(\?.*)?$/i
 
-function isValidImageUrl(v: string) {
-  if (v === "") return true
+function sanitizeUrl(v: string) {
+  return v.trim().replace(/ /g, "%20")
+}
+
+function isValidUrl(v: string) {
+  const cleaned = sanitizeUrl(v)
+  if (cleaned === "") return false
   try {
-    new URL(v)
+    new URL(cleaned)
+    return true
   } catch {
     return false
   }
-  return imageExtRe.test(v)
+}
+
+async function validateImageUrl(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(sanitizeUrl(url), { method: "HEAD" })
+    const contentType = res.headers.get("content-type")?.split(";")[0] ?? ""
+    return ALLOWED_IMAGE_TYPES.includes(contentType)
+  } catch {
+    return false
+  }
 }
 
 const updateSchema = z.object({
   name: z.string().min(1, "Name must be non-empty").optional(),
   image: z
     .string()
-    .refine(isValidImageUrl, "Must be a valid image URL ending with .jpg, .png, .gif, .webp, etc")
     .optional()
     .nullable()
     .transform((v) => (v === "" ? null : v)),
@@ -58,6 +83,23 @@ export async function PUT(request: Request) {
   }
 
   const { name, image } = parsed.data
+
+  if (image !== undefined && image !== null) {
+    const cleaned = sanitizeUrl(image)
+    if (!isValidUrl(cleaned)) {
+      return NextResponse.json({ error: "Invalid image URL format" }, { status: 400 })
+    }
+    if (!imageExtRe.test(cleaned)) {
+      return NextResponse.json(
+        { error: "URL must end with a valid image extension (jpg, jpeg, png, gif, webp, svg, bmp, avif, ico)" },
+        { status: 400 },
+      )
+    }
+    const isValidImage = await validateImageUrl(cleaned)
+    if (!isValidImage) {
+      return NextResponse.json({ error: "URL must point to a valid image" }, { status: 400 })
+    }
+  }
 
   const updates: Record<string, string | null> = {}
   if (name !== undefined) updates.name = name.trim()

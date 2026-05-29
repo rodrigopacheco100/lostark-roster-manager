@@ -1,6 +1,7 @@
 export { Badge } from "./Badge"
 export { Button } from "./Button"
 export { Card } from "./Card"
+export { CircularProgress } from "./CircularProgress"
 export { EmptyState } from "./EmptyState"
 export { Input } from "./Input"
 export { Modal } from "./Modal"

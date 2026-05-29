@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight } from "lucide-react"
 import Image from "next/image"
 import { useMemo, useRef, useState } from "react"
 import { mappedIconsByClass } from "@/assets/classes"
-import { Table } from "@/components/ui"
+import { CircularProgress, Table } from "@/components/ui"
 import type { ToggleEntry } from "@/hooks/useRaidToggleQueue"
 import type { OwnerRosters } from "../_types"
 import { RaidCheckbox } from "./RaidCheckbox"
@@ -19,6 +19,20 @@ export function OwnerSection({ group, enqueue }: { group: OwnerRosters; enqueue:
     prevImageRef.current = group.owner.image
     setAvatarError(false)
   }
+
+  const totalRaids = useMemo(
+    () => group.rosters.reduce((s, r) => s + r.totalRaidsAssigned, 0),
+    [group.rosters],
+  )
+  const totalCompleted = useMemo(
+    () =>
+      group.rosters.reduce(
+        (s, r) => s + r.characters.reduce((sc, c) => sc + c.raids.filter((ra) => ra.completed).length, 0),
+        0,
+      ),
+    [group.rosters],
+  )
+  const pct = totalRaids > 0 ? Math.round((totalCompleted / totalRaids) * 100) : 0
 
   const raidGroups = useMemo(() => {
     const groups = new Map<string, { raidName: string; difficulty: string; total: number; completed: number }>()
@@ -38,33 +52,36 @@ export function OwnerSection({ group, enqueue }: { group: OwnerRosters; enqueue:
 
   return (
     <div className="rounded-lg border border-gray-800 bg-surface p-3">
-      <button type="button" onClick={() => setCollapsed(!collapsed)} className="mb-2 flex w-full items-center gap-2">
-        {collapsed ? (
-          <ChevronRight className="h-5 w-5 shrink-0 text-gray-500" />
-        ) : (
-          <ChevronDown className="h-5 w-5 shrink-0 text-gray-500" />
-        )}
-        {group.owner.image && !avatarError ? (
-          <Image
-            src={group.owner.image}
-            alt=""
-            width={24}
-            height={24}
-            className="h-6 w-6 shrink-0 rounded-full object-cover"
-            unoptimized
-            onError={() => setAvatarError(true)}
-          />
-        ) : (
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-hover text-xs font-medium text-gray-500">
-            {group.owner.name[0]?.toUpperCase() ?? "?"}
-          </span>
-        )}
-        <h2 className="text-xl font-semibold text-gray-100">
-          {group.owner.name}
-          {group.owner.groups && group.owner.groups.length > 0 && (
-            <span className="ml-2 text-sm font-normal text-gray-500">({group.owner.groups.join(", ")})</span>
+      <button type="button" onClick={() => setCollapsed(!collapsed)} className="mb-2 flex w-full items-center justify-between">
+        <span className="flex items-center gap-2">
+          {collapsed ? (
+            <ChevronRight className="h-5 w-5 shrink-0 text-gray-500" />
+          ) : (
+            <ChevronDown className="h-5 w-5 shrink-0 text-gray-500" />
           )}
-        </h2>
+          {group.owner.image && !avatarError ? (
+            <Image
+              src={group.owner.image}
+              alt=""
+              width={24}
+              height={24}
+              className="h-6 w-6 shrink-0 rounded-full object-cover"
+              unoptimized
+              onError={() => setAvatarError(true)}
+            />
+          ) : (
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-hover text-xs font-medium text-gray-500">
+              {group.owner.name[0]?.toUpperCase() ?? "?"}
+            </span>
+          )}
+          <h2 className="text-xl font-semibold text-gray-100">
+            {group.owner.name}
+            {group.owner.groups && group.owner.groups.length > 0 && (
+              <span className="ml-2 text-sm font-normal text-gray-500">({group.owner.groups.join(", ")})</span>
+            )}
+          </h2>
+        </span>
+        <CircularProgress percent={pct} />
       </button>
       <div className="mb-3 flex flex-wrap gap-1 pl-7">
         {raidGroups.map((g) => (

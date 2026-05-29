@@ -8,6 +8,7 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Lost Ark Roster Manager",
   description: "Track raid progress across your rosters and friends",
+  icons: { icon: "/favicon.ico" },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

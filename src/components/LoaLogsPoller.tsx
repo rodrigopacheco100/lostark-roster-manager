@@ -5,30 +5,30 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import toast from "react-hot-toast"
 import { httpClient } from "@/lib/api"
 import { loadEncounters, matchEncounters } from "@/lib/loa-logs/client"
+import type { ImportEntry } from "@/lib/loa-logs/file-handle"
 import {
+  addImportHistory,
   checkHandlePermission,
+  clearAllStorage,
   clearCheckpoint,
   getCheckpoint,
+  getFileInfo,
+  getImportHistory,
   getStoredHandle,
-  removeStoredHandle,
   requestFileHandle,
   requestHandlePermission,
   setCheckpoint,
+  setFileInfo,
+  storeFileHandle,
 } from "@/lib/loa-logs/file-handle"
-
-type PollerResult = {
-  totalCleared: number
-  matched: number
-  updated: number
-  errors: string[]
-}
 
 type PollerContextValue = {
   isConnected: boolean
   isPolling: boolean
-  lastResult: PollerResult | null
   fileName: string | null
-  connect: () => Promise<void>
+  recentImports: ImportEntry[]
+  lastImportAt: number | null
+  connect: (handle?: FileSystemFileHandle) => Promise<void>
   disconnect: () => Promise<void>
 }
 
@@ -40,7 +40,7 @@ export function useLoaLogsPoller() {
   return ctx
 }
 
-const POLL_INTERVAL = 30_000
+const POLL_INTERVAL = 60_000
 
 type RaidDiff = { id: string; difficulty: string }
 type Raid = { id: string; slug: string; name: string; difficulties: RaidDiff[] }
@@ -50,10 +50,13 @@ type BatchResult = { updated: number }
 function LoaLogsPollerInner({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient()
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const handleRef = useRef<FileSystemFileHandle | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [isPolling, setIsPolling] = useState(false)
-  const [lastResult, setLastResult] = useState<PollerResult | null>(null)
   const [fileName, setFileName] = useState<string | null>(null)
+  const [recentImports, setRecentImports] = useState<ImportEntry[]>([])
+
+  const lastImportAt = recentImports.length > 0 ? recentImports[0].importedAt : null
 
   const raidsQuery = useQuery<Raid[]>({
     queryKey: ["/api/raids"],
@@ -75,7 +78,7 @@ function LoaLogsPollerInner({ children }: { children: React.ReactNode }) {
   }, [])
 
   const doPoll = useCallback(async () => {
-    const handle = await getStoredHandle()
+    const handle = handleRef.current
     if (!handle) {
       stopPolling()
       setIsConnected(false)
@@ -84,8 +87,10 @@ function LoaLogsPollerInner({ children }: { children: React.ReactNode }) {
 
     const permState = await checkHandlePermission(handle)
     if (permState === "denied") {
-      await removeStoredHandle()
+      await clearAllStorage()
+      handleRef.current = null
       setIsConnected(false)
+      setFileName(null)
       stopPolling()
       toast.error("File access denied. Reconnect on the Loa Logs page.")
       setIsPolling(false)
@@ -130,8 +135,27 @@ function LoaLogsPollerInner({ children }: { children: React.ReactNode }) {
         return
       }
 
+      const existingTimestamps = new Set(
+        getImportHistory().map((e) => `${e.fightStart}|${e.characterName}|${e.bossName}`),
+      )
+      const newMatches = matches.filter(
+        (m) => !existingTimestamps.has(`${m.fightStart}|${m.characterName}|${m.bossName}`),
+      )
+
+      if (newMatches.length === 0) {
+        const last = encounters[encounters.length - 1]
+        setCheckpoint({
+          id: last.id,
+          bossName: last.current_boss,
+          difficulty: last.difficulty,
+          playerName: last.local_player,
+        })
+        setIsPolling(false)
+        return
+      }
+
       const batchResult = await httpClient.post<BatchResult>("/api/raids/batch", {
-        updates: matches.map((m) => ({
+        updates: newMatches.map((m) => ({
           characterId: m.characterId,
           raidDifficultyId: m.raidDifficultyId,
           completed: true,
@@ -149,22 +173,24 @@ function LoaLogsPollerInner({ children }: { children: React.ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ["/api/raids"] })
       queryClient.invalidateQueries({ queryKey: ["dashboard"] })
 
-      const summary: PollerResult = {
-        totalCleared: encounters.length,
-        matched: matches.length,
-        updated: batchResult.updated,
-        errors: skipped.map((s) => `${s.bossName}: ${s.reason}`),
-      }
-      setLastResult(summary)
-
-      const uniqueChars = [...new Set(matches.map((m) => m.characterName))]
-      toast.success(`Auto-imported ${batchResult.updated} raid(s) for ${uniqueChars.join(", ")}`)
+      const now = Date.now()
+      const importEntries: ImportEntry[] = newMatches.map((m) => ({
+        fightStart: m.fightStart,
+        importedAt: now,
+        bossName: m.bossName,
+        characterName: m.characterName,
+        difficulty: m.difficulty,
+      }))
+      addImportHistory(importEntries)
+      setRecentImports(getImportHistory())
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       toast.error(`Auto-import failed: ${msg}`)
 
       if (msg.includes("NotFoundError") || msg.includes("handle is invalid")) {
-        await removeStoredHandle()
+        await clearAllStorage()
+        handleRef.current = null
+        setFileName(null)
         setIsConnected(false)
         stopPolling()
       }
@@ -180,50 +206,66 @@ function LoaLogsPollerInner({ children }: { children: React.ReactNode }) {
     intervalRef.current = setInterval(doPoll, POLL_INTERVAL)
   }, [doPoll])
 
-  const connect = useCallback(async () => {
-    const existing = await getStoredHandle()
-    if (existing) {
-      const ok = await requestHandlePermission(existing)
-      if (ok) {
-        setFileName(existing.name)
-        startPolling()
-        return
+  const connect = useCallback(
+    async (handle?: FileSystemFileHandle) => {
+      if (!handle) {
+        handle = await requestFileHandle()
+      } else {
+        const ok = await requestHandlePermission(handle)
+        if (!ok) throw new Error("Permission denied for the selected file")
+        clearCheckpoint()
       }
-      await removeStoredHandle()
-    }
-
-    const handle = await requestFileHandle()
-    setFileName(handle.name)
-    startPolling()
-  }, [startPolling])
+      handleRef.current = handle
+      await storeFileHandle(handle)
+      setFileInfo(handle.name)
+      setFileName(handle.name)
+      setRecentImports(getImportHistory())
+      startPolling()
+    },
+    [startPolling],
+  )
 
   const disconnect = useCallback(async () => {
     stopPolling()
-    await removeStoredHandle()
+    handleRef.current = null
+    await clearAllStorage()
     setIsConnected(false)
     setFileName(null)
-    setLastResult(null)
-    clearCheckpoint()
+    setRecentImports([])
     toast("Disconnected from Loa Logs", { icon: "ℹ️" })
   }, [stopPolling])
 
   useEffect(() => {
+    setRecentImports(getImportHistory())
     getStoredHandle().then(async (handle) => {
-      if (handle) {
-        setFileName(handle.name)
-        const permState = await checkHandlePermission(handle)
-        if (permState === "granted") {
-          startPolling()
-        } else if (permState === "denied") {
-          await removeStoredHandle()
-          setFileName(null)
-        }
+      if (!handle) {
+        const info = getFileInfo()
+        if (info) setFileName(info.fileName)
+        return
+      }
+      setFileName(handle.name)
+      setFileInfo(handle.name)
+      const perm = await checkHandlePermission(handle)
+      if (perm === "granted") {
+        handleRef.current = handle
+        startPolling()
+      } else if (perm === "denied") {
+        await clearAllStorage()
+        setFileName(null)
       }
     })
     return () => stopPolling()
   }, [startPolling, stopPolling])
 
-  const ctx: PollerContextValue = { isConnected, isPolling, lastResult, fileName, connect, disconnect }
+  const ctx: PollerContextValue = {
+    isConnected,
+    isPolling,
+    fileName,
+    recentImports,
+    lastImportAt,
+    connect,
+    disconnect,
+  }
 
   return <PollerContext.Provider value={ctx}>{children}</PollerContext.Provider>
 }

@@ -3,11 +3,12 @@ import { findLoaLogsDifficulty, findRaidSlugByBossName } from "./boss-mappings"
 import type { EncounterCheckpoint } from "./file-handle"
 import { getCurrentWeeklyWindow } from "./weekly-window"
 
-type EncounterRow = {
+export type EncounterRow = {
   id: number
   current_boss: string
   difficulty: string
   local_player: string
+  fight_start: number
 }
 
 type CharacterInfo = {
@@ -38,7 +39,7 @@ async function getSqlJs() {
 
 function queryEncounters(db: SqlJsDatabase, startMs: number, endMs: number, lastId: number): EncounterRow[] {
   const stmt = db.prepare(`
-    SELECT id, current_boss, difficulty, local_player
+    SELECT id, current_boss, difficulty, local_player, fight_start
     FROM encounter_preview
     WHERE cleared = 1 AND fight_start >= ? AND fight_start < ? AND id > ?
   `)
@@ -88,6 +89,8 @@ export type MatchResult = {
   completed: true
   bossName: string
   characterName: string
+  difficulty: string
+  fightStart: number
 }
 
 export function matchEncounters(
@@ -148,6 +151,8 @@ export function matchEncounters(
         completed: true as const,
         bossName: enc.current_boss,
         characterName: enc.local_player,
+        difficulty: enc.difficulty,
+        fightStart: enc.fight_start,
       })
     }
   }

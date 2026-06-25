@@ -119,6 +119,10 @@ export function deleteCharacter(id: string) {
   return db.delete(characters).where(eq(characters.id, id)).returning()
 }
 
+export function updateCharacterItemLevelByGuid(characterGuid: string, itemLevel: number) {
+  return db.update(characters).set({ itemLevel }).where(eq(characters.characterGuid, characterGuid)).returning()
+}
+
 /* ───────── FRIENDS ───────── */
 export function searchUsers(query: string, currentUserId: string) {
   return db

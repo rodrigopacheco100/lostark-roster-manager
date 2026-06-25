@@ -1,9 +1,9 @@
 "use client"
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Check, GripVertical, Pencil, Plus, Sword, Trash2, Upload, X } from "lucide-react"
+import { Check, GripVertical, Link2, Pencil, Plus, RefreshCw, Sword, Trash2, Upload, X } from "lucide-react"
 import Link from "next/link"
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { FloatingSaveBar } from "@/components/FloatingSaveBar"
 import { ImportRosterModal } from "@/components/ImportRosterModal"
 import { SortableList } from "@/components/SortableList"
@@ -15,7 +15,26 @@ import { httpClient } from "@/lib/api"
 type Roster = {
   id: string
   name: string
+  rosterGuid?: string | null
   characters: { id: string }[]
+}
+
+const COOLDOWN_KEY = "ags:ilvl-sync:last-sync-ts"
+const COOLDOWN_MS = 60 * 60 * 1000
+
+function getCooldownRemaining(): number {
+  const stored = localStorage.getItem(COOLDOWN_KEY)
+  if (!stored) return 0
+  const elapsed = Date.now() - new Date(stored).getTime()
+  return Math.max(0, COOLDOWN_MS - elapsed)
+}
+
+function formatCountdown(ms: number): string {
+  const totalMinutes = Math.ceil(ms / 60000)
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  if (hours > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
 }
 
 export default function RostersPage() {
@@ -31,8 +50,21 @@ export default function RostersPage() {
   const [editName, setEditName] = useState("")
   const [reorderDirty, setReorderDirty] = useState(false)
   const [isReordering, setIsReordering] = useState(false)
+  const [cooldownRemaining, setCooldownRemaining] = useState(getCooldownRemaining)
   const workingOrderRef = useRef<string[]>([])
   const { confirm } = useConfirm()
+
+  const hasLinkedRosters = rosters?.some((r) => r.rosterGuid)
+
+  useEffect(() => {
+    if (cooldownRemaining <= 0) return
+    const id = setInterval(() => {
+      const remaining = getCooldownRemaining()
+      setCooldownRemaining(remaining)
+      if (remaining <= 0) clearInterval(id)
+    }, 10000)
+    return () => clearInterval(id)
+  }, [cooldownRemaining])
 
   const createMutation = useMutation({
     mutationFn: (name: string) => httpClient.post<Roster>("/api/rosters", { name }),
@@ -44,6 +76,10 @@ export default function RostersPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => httpClient.delete(`/api/rosters/${id}`),
+  })
+
+  const syncMutation = useMutation({
+    mutationFn: () => httpClient.post<{ updated: number }>("/api/rosters/sync-ilvl"),
   })
 
   const [importModalOpen, setImportModalOpen] = useState(false)
@@ -120,6 +156,17 @@ export default function RostersPage() {
     setIsReordering((v) => !v)
   }
 
+  async function handleSync() {
+    await promise(syncMutation.mutateAsync(), {
+      loading: "Syncing item levels...",
+      success: (res) => `${res.updated} character(s) updated`,
+      error: (err: Error) => err.message,
+    })
+    localStorage.setItem(COOLDOWN_KEY, new Date().toISOString())
+    setCooldownRemaining(COOLDOWN_MS)
+    queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
+  }
+
   return (
     <div>
       <PageHeader title="Rosters" />
@@ -143,6 +190,21 @@ export default function RostersPage() {
         >
           Import
         </Button>
+        {hasLinkedRosters && (
+          <Button
+            type="button"
+            variant="secondary"
+            icon={<RefreshCw className={`h-4 w-4 ${syncMutation.isPending ? "animate-spin" : ""}`} />}
+            onClick={handleSync}
+            disabled={syncMutation.isPending || cooldownRemaining > 0}
+          >
+            {cooldownRemaining > 0
+              ? `Sync ilvl (${formatCountdown(cooldownRemaining)})`
+              : syncMutation.isPending
+                ? "Syncing..."
+                : "Sync ilvl"}
+          </Button>
+        )}
       </form>
       {rosters && rosters.length > 0 && (
         <div className="mb-2 mt-6">
@@ -198,6 +260,11 @@ export default function RostersPage() {
                     >
                       {roster.name}
                     </Link>
+                    {roster.rosterGuid && (
+                      <span title="Linked to AGS API">
+                        <Link2 className="h-3.5 w-3.5 text-blue-400" />
+                      </span>
+                    )}
                     <span className="text-sm text-gray-500">{roster.characters.length} characters</span>
                   </div>
                   <div className="flex gap-1">

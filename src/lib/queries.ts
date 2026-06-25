@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, like, not, or, sql } from "drizzle-orm"
+import { and, asc, eq, inArray, like, not, or, sql } from "drizzle-orm"
 import { db } from "@/db"
 import {
   characterRaids,
@@ -207,7 +207,7 @@ export function removeFriendship(userId: string, friendId: string) {
 export function getAllRaids() {
   return db.query.raids.findMany({
     with: { difficulties: true },
-    orderBy: desc(raids.createdAt),
+    orderBy: asc(raids.createdAt),
   })
 }
 

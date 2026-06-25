@@ -17,6 +17,22 @@ const bossMappings: BossMapping[] = [
   { bossName: "Corvus Tul Rak", loaLogsDifficulty: "Normal", slug: "shadow-raid-serca" },
   { bossName: "Corvus Tul Rak", loaLogsDifficulty: "Hard", slug: "shadow-raid-serca" },
   { bossName: "Corvus Tul Rak", loaLogsDifficulty: "Nightmare", slug: "shadow-raid-serca" },
+  // Horizon Cathedral
+  {
+    bossName: "Arcenos, Vanguard of Fanaticism",
+    loaLogsDifficulty: "Level 1",
+    slug: "abyssal-dungeon-horizon-cathedral",
+  },
+  {
+    bossName: "Arcenos, Vanguard of Fanaticism",
+    loaLogsDifficulty: "Level 2",
+    slug: "abyssal-dungeon-horizon-cathedral",
+  },
+  {
+    bossName: "Arcenos, Vanguard of Fanaticism",
+    loaLogsDifficulty: "Level 3",
+    slug: "abyssal-dungeon-horizon-cathedral",
+  },
 ]
 
 export function findRaidSlugByBossName(bossName: string, difficulty?: string): RaidSlug | undefined {

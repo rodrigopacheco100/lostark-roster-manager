@@ -10,6 +10,7 @@ export type RaidSlug =
   | "act-4-armoche"
   | "final-act-kazeros"
   | "shadow-raid-serca"
+  | "abyssal-dungeon-horizon-cathedral"
 
 type DifficultyItem = {
   difficulty: string
@@ -98,6 +99,30 @@ const raidData: RaidDataItem[] = [
         minIlvl: 1740,
         loaLogsBossName: "Corvus Tul Rak",
         loaLogsDifficulty: "Nightmare",
+      },
+    ],
+  },
+  {
+    slug: "abyssal-dungeon-horizon-cathedral",
+    name: "Horizon Cathedral",
+    difficulties: [
+      {
+        difficulty: "Level 1",
+        minIlvl: 1700,
+        loaLogsBossName: "Arcenos, Vanguard of Fanaticism",
+        loaLogsDifficulty: "Level 1",
+      },
+      {
+        difficulty: "Level 2",
+        minIlvl: 1720,
+        loaLogsBossName: "Arcenos, Vanguard of Fanaticism",
+        loaLogsDifficulty: "Level 2",
+      },
+      {
+        difficulty: "Level 3",
+        minIlvl: 1750,
+        loaLogsBossName: "Arcenos, Vanguard of Fanaticism",
+        loaLogsDifficulty: "Level 3",
       },
     ],
   },

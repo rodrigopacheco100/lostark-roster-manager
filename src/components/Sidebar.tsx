@@ -41,7 +41,7 @@ function CollapsibleText({ show, children }: { show: boolean; children: React.Re
   return (
     <span
       className={`overflow-hidden whitespace-nowrap transition-all duration-200 ${
-        show ? "max-w-40 opacity-100" : "max-w-0 opacity-0"
+        show ? "max-w-40 opacity-100" : "max-w-0 opacity-0 pointer-events-none select-none"
       }`}
     >
       {children}

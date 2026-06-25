@@ -48,11 +48,11 @@ export function OwnerSection({ group, enqueue }: { group: OwnerRosters; enqueue:
   }, [group.rosters])
 
   return (
-    <div className="rounded-lg border border-gray-800 bg-surface p-3">
+    <div className="rounded-lg border border-gray-800 bg-surface">
       <button
         type="button"
         onClick={() => setCollapsed(!collapsed)}
-        className="mb-2 flex w-full items-center justify-between"
+        className="flex w-full cursor-pointer items-center justify-between p-3 select-none"
       >
         <span className="flex items-center gap-2">
           {collapsed ? (
@@ -64,39 +64,42 @@ export function OwnerSection({ group, enqueue }: { group: OwnerRosters; enqueue:
             <Image
               src={group.owner.image}
               alt=""
-              width={24}
-              height={24}
-              className="h-6 w-6 shrink-0 rounded-full object-cover"
+              width={32}
+              height={32}
+              className="h-8 w-8 shrink-0 rounded-full object-cover"
               unoptimized
               onError={() => setAvatarError(true)}
             />
           ) : (
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-hover text-xs font-medium text-gray-500">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-hover text-sm font-medium text-gray-500">
               {group.owner.name[0]?.toUpperCase() ?? "?"}
             </span>
           )}
-          <h2 className="text-xl font-semibold text-gray-100">
+          <h2 className="whitespace-nowrap text-xl font-semibold text-gray-100">
             {group.owner.name}
             {group.owner.groups && group.owner.groups.length > 0 && (
               <span className="ml-2 text-sm font-normal text-gray-500">({group.owner.groups.join(", ")})</span>
             )}
           </h2>
+          {raidGroups.length > 0 && (
+            <span className="flex flex-wrap gap-1">
+              {raidGroups.map((g) => (
+                <span
+                  key={`${g.raidName}::${g.difficulty}`}
+                  className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
+                    g.completed === g.total ? "bg-green-900/40 text-green-400" : "bg-surface-hover text-gray-400"
+                  }`}
+                >
+                  {g.completed}/{g.total} {g.raidName} {g.difficulty}
+                </span>
+              ))}
+            </span>
+          )}
         </span>
         <CircularProgress percent={pct} />
       </button>
-      <div className="mb-3 flex flex-wrap gap-1 pl-7">
-        {raidGroups.map((g) => (
-          <span
-            key={`${g.raidName}::${g.difficulty}`}
-            className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
-              g.completed === g.total ? "bg-green-900/40 text-green-400" : "bg-surface-hover text-gray-400"
-            }`}
-          >
-            {g.completed}/{g.total} {g.raidName} {g.difficulty}
-          </span>
-        ))}
-      </div>
       {!collapsed && (
+        <div className="px-3 pb-3">
         <div className="flex flex-wrap gap-3">
           {group.rosters.map((roster) => (
             <div
@@ -157,6 +160,7 @@ export function OwnerSection({ group, enqueue }: { group: OwnerRosters; enqueue:
               </div>
             </div>
           ))}
+        </div>
         </div>
       )}
     </div>

@@ -88,7 +88,7 @@ export function OwnerSection({ group, enqueue }: { group: OwnerRosters; enqueue:
         {raidGroups.map((g) => (
           <span
             key={`${g.raidName}::${g.difficulty}`}
-            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+            className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
               g.completed === g.total ? "bg-green-900/40 text-green-400" : "bg-surface-hover text-gray-400"
             }`}
           >
@@ -101,7 +101,7 @@ export function OwnerSection({ group, enqueue }: { group: OwnerRosters; enqueue:
           {group.rosters.map((roster) => (
             <div
               key={roster.rosterId}
-              className="w-full sm:min-w-[620px] sm:flex-1 rounded-lg border border-gray-800 bg-surface-elevated"
+              className="w-full sm:min-w-fit sm:flex-1 rounded-lg border border-gray-800 bg-surface-elevated"
             >
               <RosterDivider name={roster.rosterName} characterCount={roster.totalCharacters} />
               <div className="pb-2">

@@ -19,7 +19,7 @@ export function RaidCheckbox({
       type="button"
       disabled={!isOwner}
       onClick={() => enqueue({ characterId, raidDifficultyId: raid.raidDifficultyId, completed: !raid.completed })}
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
         raid.completed ? "bg-green-900/40 text-green-400" : "bg-surface-hover text-gray-400"
       } ${isOwner ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}
     >

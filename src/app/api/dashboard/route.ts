@@ -24,7 +24,7 @@ function formatRosters(rosters: Awaited<ReturnType<typeof getRosters>>) {
           minIlvl: cr.raidDifficulty.minIlvl,
           completed: cr.completed,
         }))
-        .sort((a, b) => a.minIlvl - b.minIlvl || a.raidDifficultyCreatedAt - b.raidDifficultyCreatedAt),
+        .sort((a, b) => a.raidDifficultyCreatedAt - b.raidDifficultyCreatedAt),
     })),
     totalRaidsAssigned: roster.characters.reduce((s, c) => s + c.characterRaids.length, 0),
     totalCharacters: roster.characters.length,

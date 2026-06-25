@@ -48,8 +48,6 @@ export function RaidCombobox({ character, allRaids, rosterId, onClose }: RaidCom
   }, [isPopoverOpen])
 
   useEffect(() => {
-    if (!isPopoverOpen) return
-
     function handleClickOutside(e: MouseEvent) {
       if (
         popoverRef.current &&
@@ -57,12 +55,12 @@ export function RaidCombobox({ character, allRaids, rosterId, onClose }: RaidCom
         triggerRef.current &&
         !triggerRef.current.contains(e.target as Node)
       ) {
-        setIsPopoverOpen(false)
+        onClose()
       }
     }
 
     function handleEscape(e: KeyboardEvent) {
-      if (e.key === "Escape") setIsPopoverOpen(false)
+      if (e.key === "Escape") onClose()
     }
 
     document.addEventListener("mousedown", handleClickOutside)
@@ -71,7 +69,7 @@ export function RaidCombobox({ character, allRaids, rosterId, onClose }: RaidCom
       document.removeEventListener("mousedown", handleClickOutside)
       document.removeEventListener("keydown", handleEscape)
     }
-  }, [isPopoverOpen])
+  }, [onClose])
 
   const filteredRaids = useMemo(() => {
     if (!searchQuery.trim()) return allRaids
@@ -139,7 +137,7 @@ export function RaidCombobox({ character, allRaids, rosterId, onClose }: RaidCom
         success: "Raid removed!",
         error: (err: Error) => err.message,
       })
-      queryClient.invalidateQueries({ queryKey: [`/api/rosters/${rosterId}`] })
+      queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
     } catch {
       setCheckedIds(new Set(character.characterRaids.map((cr) => cr.raidDifficulty.id)))
     }
@@ -152,7 +150,7 @@ export function RaidCombobox({ character, allRaids, rosterId, onClose }: RaidCom
         success: "Raids updated!",
         error: (err: Error) => err.message,
       })
-      queryClient.invalidateQueries({ queryKey: [`/api/rosters/${rosterId}`] })
+      queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
       onClose()
     } catch {
       // popover stays open on error

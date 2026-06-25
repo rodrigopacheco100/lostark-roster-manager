@@ -1,50 +1,37 @@
 "use client"
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Check, GripVertical, Link2, Pencil, Plus, RefreshCw, Sword, Trash2, Upload, X } from "lucide-react"
-import Link from "next/link"
+import { Sword } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { FloatingSaveBar } from "@/components/FloatingSaveBar"
 import { ImportRosterModal } from "@/components/ImportRosterModal"
 import { SortableList } from "@/components/SortableList"
-import { Button, Card, EmptyState, Input, PageHeader } from "@/components/ui"
+import { EmptyState, PageHeader } from "@/components/ui"
 import { useConfirm } from "@/hooks/useConfirm"
 import { useToast } from "@/hooks/useToast"
 import { httpClient } from "@/lib/api"
+import { RosterSection } from "./_compose/RosterSection"
+import { getCooldownRemaining, RosterToolbar } from "./_compose/RosterToolbar"
+import type { Raid, Roster } from "./_types"
 
-type Roster = {
-  id: string
-  name: string
-  rosterGuid?: string | null
-  characters: { id: string }[]
-}
-
-const COOLDOWN_KEY = "ags:ilvl-sync:last-sync-ts"
 const COOLDOWN_MS = 60 * 60 * 1000
-
-function getCooldownRemaining(): number {
-  const stored = localStorage.getItem(COOLDOWN_KEY)
-  if (!stored) return 0
-  const elapsed = Date.now() - new Date(stored).getTime()
-  return Math.max(0, COOLDOWN_MS - elapsed)
-}
-
-function formatCountdown(ms: number): string {
-  const totalMinutes = Math.ceil(ms / 60000)
-  const hours = Math.floor(totalMinutes / 60)
-  const minutes = totalMinutes % 60
-  if (hours > 0) return `${hours}h ${minutes}m`
-  return `${minutes}m`
-}
 
 export default function RostersPage() {
   const queryClient = useQueryClient()
   const { promise } = useToast()
+  const { confirm } = useConfirm()
   const { data: rosters } = useQuery<Roster[]>({
     queryKey: ["/api/rosters"],
     queryFn: () => httpClient.get<Roster[]>("/api/rosters"),
     staleTime: 10_000,
   })
+  const { data: allRaids } = useQuery<Raid[]>({
+    queryKey: ["/api/raids"],
+    queryFn: () => httpClient.get<Raid[]>("/api/raids"),
+    staleTime: 10_000,
+  })
+
+  // Roster-level state
   const [newName, setNewName] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState("")
@@ -52,9 +39,13 @@ export default function RostersPage() {
   const [isReordering, setIsReordering] = useState(false)
   const [cooldownRemaining, setCooldownRemaining] = useState(getCooldownRemaining)
   const workingOrderRef = useRef<string[]>([])
-  const { confirm } = useConfirm()
+  const [expandedRosters, setExpandedRosters] = useState<Set<string>>(new Set())
+  const [importModalOpen, setImportModalOpen] = useState(false)
+  const [charReorderRosterId, setCharReorderRosterId] = useState<string | null>(null)
+  const [charReorderDirty, setCharReorderDirty] = useState(false)
+  const charWorkingOrderRef = useRef<string[]>([])
 
-  const hasLinkedRosters = rosters?.some((r) => r.rosterGuid)
+  const hasLinkedRosters = rosters?.some((r) => r.rosterGuid) ?? false
 
   useEffect(() => {
     if (cooldownRemaining <= 0) return
@@ -66,6 +57,7 @@ export default function RostersPage() {
     return () => clearInterval(id)
   }, [cooldownRemaining])
 
+  // Mutations
   const createMutation = useMutation({
     mutationFn: (name: string) => httpClient.post<Roster>("/api/rosters", { name }),
   })
@@ -82,12 +74,18 @@ export default function RostersPage() {
     mutationFn: () => httpClient.post<{ updated: number }>("/api/rosters/sync-ilvl"),
   })
 
-  const [importModalOpen, setImportModalOpen] = useState(false)
-
   const reorderMutation = useMutation({
     mutationFn: (ids: string[]) => httpClient.put("/api/rosters/reorder", { ids }),
   })
 
+  const charReorderMutation = useMutation({
+    mutationFn: ({ ids, rosterId }: { ids: string[]; rosterId: string }) =>
+      httpClient.put("/api/characters/reorder", { ids, rosterId }),
+  })
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
+
+  // Handlers
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     if (!newName.trim()) return
@@ -97,10 +95,10 @@ export default function RostersPage() {
       error: (err: Error) => err.message,
     })
     setNewName("")
-    queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
+    invalidate()
   }
 
-  async function handleUpdate(id: string) {
+  async function handleUpdateRoster(id: string) {
     if (!editName.trim()) return
     await promise(updateMutation.mutateAsync({ id, name: editName }), {
       loading: "Updating...",
@@ -108,10 +106,10 @@ export default function RostersPage() {
       error: (err: Error) => err.message,
     })
     setEditingId(null)
-    queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
+    invalidate()
   }
 
-  async function handleDelete(id: string) {
+  async function handleDeleteRoster(id: string) {
     const ok = await confirm({
       title: "Delete roster",
       message: "Delete this roster and all its characters? This cannot be undone.",
@@ -125,7 +123,7 @@ export default function RostersPage() {
       success: "Roster deleted",
       error: (err: Error) => err.message,
     })
-    queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
+    invalidate()
   }
 
   function handleReorder(ids: string[]) {
@@ -143,11 +141,11 @@ export default function RostersPage() {
     })
     setReorderDirty(false)
     setIsReordering(false)
-    queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
+    invalidate()
   }
 
   function handleDiscardReorder() {
-    queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
+    invalidate()
     setReorderDirty(false)
     setIsReordering(false)
   }
@@ -162,63 +160,63 @@ export default function RostersPage() {
       success: (res) => `${res.updated} character(s) updated`,
       error: (err: Error) => err.message,
     })
-    localStorage.setItem(COOLDOWN_KEY, new Date().toISOString())
+    localStorage.setItem("ags:ilvl-sync:last-sync-ts", new Date().toISOString())
     setCooldownRemaining(COOLDOWN_MS)
-    queryClient.invalidateQueries({ queryKey: ["/api/rosters"] })
+    invalidate()
+  }
+
+  function handleCharReorder(ids: string[]) {
+    charWorkingOrderRef.current = ids
+    setCharReorderDirty(true)
+  }
+
+  async function handleSaveCharReorder(rosterId: string) {
+    const ids = charWorkingOrderRef.current
+    if (ids.length === 0) return
+    await promise(charReorderMutation.mutateAsync({ ids, rosterId }), {
+      loading: "Saving order...",
+      success: "Order saved!",
+      error: (err: Error) => err.message,
+    })
+    setCharReorderDirty(false)
+    setCharReorderRosterId(null)
+    invalidate()
+  }
+
+  function handleDiscardCharReorder() {
+    charWorkingOrderRef.current = []
+    invalidate()
+    setCharReorderDirty(false)
+    setCharReorderRosterId(null)
+  }
+
+  function toggleRosterExpand(rosterId: string) {
+    if (isReordering) return
+    setExpandedRosters((prev) => {
+      const next = new Set(prev)
+      if (next.has(rosterId)) next.delete(rosterId)
+      else next.add(rosterId)
+      return next
+    })
   }
 
   return (
     <div>
       <PageHeader title="Rosters" />
 
-      <form onSubmit={handleCreate} className="mb-2 flex gap-2">
-        <Input
-          type="text"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="New roster name"
-          className="flex-1"
-        />
-        <Button type="submit" icon={<Plus className="h-4 w-4" />}>
-          Create
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          icon={<Upload className="h-4 w-4" />}
-          onClick={() => setImportModalOpen(true)}
-        >
-          Import
-        </Button>
-        {hasLinkedRosters && (
-          <Button
-            type="button"
-            variant="secondary"
-            icon={<RefreshCw className={`h-4 w-4 ${syncMutation.isPending ? "animate-spin" : ""}`} />}
-            onClick={handleSync}
-            disabled={syncMutation.isPending || cooldownRemaining > 0}
-          >
-            {cooldownRemaining > 0
-              ? `Sync ilvl (${formatCountdown(cooldownRemaining)})`
-              : syncMutation.isPending
-                ? "Syncing..."
-                : "Sync ilvl"}
-          </Button>
-        )}
-      </form>
-      {rosters && rosters.length > 0 && (
-        <div className="mb-2 mt-6">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={toggleReorder}
-            disabled={isReordering}
-            icon={<GripVertical className="h-4 w-4" />}
-          >
-            Reorder
-          </Button>
-        </div>
-      )}
+      <RosterToolbar
+        newName={newName}
+        onNewNameChange={setNewName}
+        onCreate={handleCreate}
+        onImportOpen={() => setImportModalOpen(true)}
+        hasLinkedRosters={hasLinkedRosters}
+        syncPending={syncMutation.isPending}
+        cooldownRemaining={cooldownRemaining}
+        onSync={handleSync}
+        rosters={rosters}
+        isReordering={isReordering}
+        onToggleReorder={toggleReorder}
+      />
 
       {rosters?.length === 0 ? (
         <EmptyState
@@ -229,64 +227,34 @@ export default function RostersPage() {
       ) : (
         <SortableList items={rosters ?? []} onReorder={handleReorder} sortable={isReordering} className="space-y-3">
           {(roster) => (
-            <Card className="flex items-center justify-between">
-              {editingId === roster.id ? (
-                <div className="flex flex-1 items-center gap-2">
-                  <Input
-                    type="text"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    autoFocus
-                    className="flex-1"
-                  />
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => handleUpdate(roster.id)}
-                    icon={<Check className="h-4 w-4" />}
-                  >
-                    Save
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setEditingId(null)} icon={<X className="h-4 w-4" />}>
-                    Cancel
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center gap-3">
-                    <Link
-                      href={`/rosters/${roster.id}`}
-                      className="font-medium text-gray-200 transition-colors hover:text-blue-400"
-                    >
-                      {roster.name}
-                    </Link>
-                    {roster.rosterGuid && (
-                      <span title="Linked to AGS API">
-                        <Link2 className="h-3.5 w-3.5 text-blue-400" />
-                      </span>
-                    )}
-                    <span className="text-sm text-gray-500">{roster.characters.length} characters</span>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon={<Pencil className="h-4 w-4" />}
-                      onClick={() => {
-                        setEditingId(roster.id)
-                        setEditName(roster.name)
-                      }}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon={<Trash2 className="h-4 w-4 text-danger" />}
-                      onClick={() => handleDelete(roster.id)}
-                    />
-                  </div>
-                </>
-              )}
-            </Card>
+            <RosterSection
+              roster={roster}
+              isExpanded={expandedRosters.has(roster.id)}
+              isReorderingRosters={isReordering}
+              allRaids={allRaids}
+              onToggleExpand={() => toggleRosterExpand(roster.id)}
+              editingRosterId={editingId}
+              editRosterName={editName}
+              onStartEditRoster={() => {
+                setEditingId(roster.id)
+                setEditName(roster.name)
+              }}
+              onEditRosterNameChange={setEditName}
+              onSaveRoster={() => handleUpdateRoster(roster.id)}
+              onCancelRosterEdit={() => setEditingId(null)}
+              onDeleteRoster={() => handleDeleteRoster(roster.id)}
+              charReordering={charReorderRosterId === roster.id}
+              charReorderDirty={charReorderDirty}
+              onStartCharReorder={() => {
+                charWorkingOrderRef.current = []
+                setCharReorderRosterId(charReorderRosterId === roster.id ? null : roster.id)
+                setCharReorderDirty(false)
+              }}
+              onCharReorder={handleCharReorder}
+              onSaveCharReorder={() => handleSaveCharReorder(roster.id)}
+              onDiscardCharReorder={handleDiscardCharReorder}
+              charReorderPending={charReorderMutation.isPending}
+            />
           )}
         </SortableList>
       )}
